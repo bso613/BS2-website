@@ -71,6 +71,9 @@
 
   #book { border: 1px solid var(--accent); border-radius: 16px; padding: 72px 48px; display: flex; flex-direction: column; gap: 24px; margin-bottom: 64px; scroll-margin-top: 24px; }
   .calendly-inline-widget { min-width: 280px; height: 700px; border-radius: 12px; overflow: hidden; }
+  .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 18px; }
+  .steps .mono { color: var(--accent); margin-right: 10px; }
+  .steps a { color: var(--accent); }
   #book .alt { font-size: 15px; margin-top: 0; }
   #book h2 { font-size: 48px; letter-spacing: -1.5px; }
   #book p { font-size: 18px; color: var(--muted); margin-top: 12px; }
@@ -156,8 +159,12 @@
   <section id="book">
     <div>
       <h2>Let's talk.</h2>
-      <p>A free 30-minute call. English, French or Spanish. Pick a time that works for you.</p>
+      <p>A free 30-minute call. English, French or Spanish.</p>
     </div>
+    <ol class="steps">
+      <li><span class="mono">01</span> Fill out the <a href="https://tally.so/r/5X9ZLE" target="_blank" rel="noopener">3-minute intake form</a> so I can come prepared.</li>
+      <li><span class="mono">02</span> Pick a time below.</li>
+    </ol>
     <div class="calendly-inline-widget" data-url="https://calendly.com/ben-a-smith-613/30min?hide_gdpr_banner=1&amp;background_color=11151c&amp;text_color=e8ecf2&amp;primary_color=7ee0c3"></div>
     <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
     <p class="alt">Prefer email? <a href="mailto:ben.a.smith.613@gmail.com?subject=Book%20a%20call%20with%20BS2">ben.a.smith.613@gmail.com</a></p>
