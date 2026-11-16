@@ -55,11 +55,12 @@
 
   #work { padding-bottom: 120px; display: flex; flex-direction: column; gap: 32px; }
   h2 { font-size: 40px; letter-spacing: -1px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
   .card { text-decoration: none; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .2s; }
   .card:hover { border-color: var(--accent); color: var(--text); }
   .card .img { height: 200px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 13px; }
   .card .body { padding: 22px; display: flex; flex-direction: column; gap: 8px; }
+  img.img { width: 100%; object-fit: cover; object-position: left top; display: block; }
   .card h3 { font-size: 20px; }
   .card p { font-size: 13px; }
 
@@ -124,6 +125,10 @@
   <section id="work">
     <h2>Selected work</h2>
     <div class="cards">
+      <div class="card">
+        <img class="img" src="img/plamocase.jpg" alt="PlamoCase homepage mockup: a community site for model kit builders">
+        <div class="body"><h3>PlamoCase</h3><p class="mono">vercel · stripe</p></div>
+      </div>
       <a class="card" href="https://github.com/serenaremlang/Ottawa-Construction" target="_blank" rel="noopener">
         <div class="img mono">[project image]</div>
         <div class="body"><h3>Ottawa Construction Map</h3><p class="mono">mongodb · leaflet · d3</p></div>
