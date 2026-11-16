@@ -66,7 +66,7 @@
   .card p { font-size: 13px; }
 
   .about { padding-bottom: 120px; display: flex; flex-wrap: wrap; gap: 40px; align-items: center; }
-  .photo { width: 140px; height: 140px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 12px; flex: none; }
+  .photo { width: 160px; height: 160px; border-radius: 12px; border: 1px solid var(--line); object-fit: cover; flex: none; }
   .about p { flex: 1 1 400px; font-size: 26px; line-height: 1.4; }
 
   #book { border: 1px solid var(--accent); border-radius: 16px; padding: 72px 48px; display: flex; flex-direction: column; gap: 24px; margin-bottom: 64px; scroll-margin-top: 24px; }
@@ -149,7 +149,7 @@
   </section>
 
   <section class="about">
-    <div class="photo mono">[photo]</div>
+    <img class="photo" src="img/ben.jpg" alt="Ben Smith">
     <p>I'm Ben Smith, an Ottawa-based data analyst with 5 years of building data systems and 20+ years in customer service, from restaurant floors to behind the bar. I listen first, then build custom tools that cut your admin so you can focus on your business.</p>
   </section>
 
