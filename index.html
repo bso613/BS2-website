@@ -68,7 +68,9 @@
   .photo { width: 140px; height: 140px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 12px; flex: none; }
   .about p { flex: 1 1 400px; font-size: 26px; line-height: 1.4; }
 
-  #book { border: 1px solid var(--accent); border-radius: 16px; padding: 72px 48px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; justify-content: space-between; margin-bottom: 64px; }
+  #book { border: 1px solid var(--accent); border-radius: 16px; padding: 72px 48px; display: flex; flex-direction: column; gap: 24px; margin-bottom: 64px; scroll-margin-top: 24px; }
+  .calendly-inline-widget { min-width: 280px; height: 700px; border-radius: 12px; overflow: hidden; }
+  #book .alt { font-size: 15px; margin-top: 0; }
   #book h2 { font-size: 48px; letter-spacing: -1.5px; }
   #book p { font-size: 18px; color: var(--muted); margin-top: 12px; }
 
@@ -76,7 +78,8 @@
 
   @media (max-width: 600px) {
     header { padding: 80px 0; }
-    #book { padding: 48px 24px; }
+    #book { padding: 40px 16px; }
+    .calendly-inline-widget { height: 1000px; }
     #book h2 { font-size: 36px; }
     .about p { font-size: 21px; }
   }
@@ -152,10 +155,11 @@
   <section id="book">
     <div>
       <h2>Let's talk.</h2>
-      <p>A free 30-minute call. English, French or Spanish.</p>
+      <p>A free 30-minute call. English, French or Spanish. Pick a time that works for you.</p>
     </div>
-    <!-- Phase 1: opens an email. Phase 2: swap the href for a calendar booking link (e.g. Cal.com or Calendly). -->
-    <a href="mailto:ben.a.smith.613@gmail.com?subject=Book%20a%20call%20with%20BS2" class="btn btn-solid">Book a call</a>
+    <div class="calendly-inline-widget" data-url="https://calendly.com/ben-a-smith-613/30min?hide_gdpr_banner=1&amp;background_color=11151c&amp;text_color=e8ecf2&amp;primary_color=7ee0c3"></div>
+    <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+    <p class="alt">Prefer email? <a href="mailto:ben.a.smith.613@gmail.com?subject=Book%20a%20call%20with%20BS2">ben.a.smith.613@gmail.com</a></p>
   </section>
 
   <footer class="mono">
