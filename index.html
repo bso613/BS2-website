@@ -60,7 +60,8 @@
   .card:hover { border-color: var(--accent); color: var(--text); }
   .card .img { height: 200px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 13px; }
   .card .body { padding: 22px; display: flex; flex-direction: column; gap: 8px; }
-  img.img { width: 100%; object-fit: cover; object-position: left top; display: block; }
+  img.img { width: 100%; object-fit: cover; display: block; }
+  .card img[src*="plamocase"] { object-position: left top; }
   .card h3 { font-size: 20px; }
   .card p { font-size: 13px; }
 
@@ -133,15 +134,15 @@
         <div class="body"><h3>PlamoCase</h3><p class="mono">vercel · stripe</p></div>
       </a>
       <a class="card" href="https://github.com/serenaremlang/Ottawa-Construction" target="_blank" rel="noopener">
-        <div class="img mono">[project image]</div>
+        <img class="img" src="https://images.unsplash.com/photo-1578973615934-8d9cdb0792b4?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Canadian flag in front of the Peace Tower on Parliament Hill, Ottawa" loading="lazy">
         <div class="body"><h3>Ottawa Construction Map</h3><p class="mono">mongodb · leaflet · d3</p></div>
       </a>
       <a class="card" href="https://github.com/bso613/WineSnobs" target="_blank" rel="noopener">
-        <div class="img mono">[project image]</div>
+        <img class="img" src="https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Wine glass overlooking a vineyard" loading="lazy">
         <div class="body"><h3>WineSnobs</h3><p class="mono">python · pandas · apis</p></div>
       </a>
       <a class="card" href="https://github.com/serenaremlang/Formula1_Fun" target="_blank" rel="noopener">
-        <div class="img mono">[project image]</div>
+        <img class="img" src="https://images.unsplash.com/photo-1614949194403-9602bdc14a3a?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Race car on a track with painted curbs" loading="lazy">
         <div class="body"><h3>Formula 1 Fun</h3><p class="mono">postgresql · flask · scraping</p></div>
       </a>
     </div>
