@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Invoice watcher · BS²</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* Layout: inbox on the left feeds an agent log and the extracted invoice table on the right. Single dark BS2 look. */
+  :root {
+    --bg: #0c0f14; --surface: #11151c; --surface-2: #171c25; --line: #232a35;
+    --text: #e8ecf2; --muted: #a7b0bf; --faint: #8a94a5;
+    --accent: #7ee0c3; --on-accent: #0c0f14;
+    --warn: #f2c46d; --crit: #ff8a7a; --skip: #6f7a8c;
+    --display: 'Space Grotesk', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--display); -webkit-font-smoothing: antialiased; }
+  h1, h2, h3, p { margin: 0; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 24px; }
+  .mono { font-family: var(--mono); }
+
+  .top { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 20px; }
+  .brand { font-weight: 700; font-size: 18px; }
+  .brand sup { color: var(--accent); font-size: 11px; }
+  .kicker { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .04em; }
+  h1 { font-size: clamp(28px, 4vw, 40px); letter-spacing: -1px; line-height: 1.1; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 62ch; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; cursor: pointer; border-radius: 8px; }
+  .btn { padding: 12px 20px; font-weight: 700; font-size: 15px; border: 0; background: var(--accent); color: var(--on-accent); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn-ghost { padding: 12px 16px; font-size: 14px; background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--faint); }
+  button:focus-visible, .mail:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .stat .lbl { font-family: var(--mono); font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; }
+  .stat .val { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat.warn .val { color: var(--warn); }
+
+  .grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+  .panel-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .panel-h h2 { font-size: 15px; font-weight: 500; }
+  .panel-h .mono { font-size: 11px; color: var(--faint); }
+
+  .mails { list-style: none; margin: 0; padding: 0; }
+  .mail { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .mail:last-child { border-bottom: 0; }
+  .mail:hover, .mail.sel { background: var(--surface-2); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--accent); }
+  .mail.done .dot { background: transparent; border: 1px solid var(--line); }
+  .mail.busy .dot { background: var(--warn); animation: pulse .8s infinite alternate; }
+  @keyframes pulse { to { opacity: .3; } }
+  .mail .from { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mail .subj { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mail .meta { font-family: var(--mono); font-size: 11px; color: var(--faint); text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .clip { font-size: 10px; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+
+  .right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .log { font-family: var(--mono); font-size: 12px; line-height: 1.7; padding: 12px 16px; height: 150px; overflow-y: auto; color: var(--muted); }
+  .log .ok { color: var(--accent); } .log .sk { color: var(--skip); } .log .wa { color: var(--warn); }
+
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+  th { text-align: left; font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--faint); text-transform: uppercase; letter-spacing: .06em; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--surface-2); }
+  tbody tr.new { animation: flash 1.2s ease-out; }
+  @keyframes flash { from { background: rgba(126,224,195,.18); } to { background: transparent; } }
+  .sup-name { font-weight: 500; }
+  .inv { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+  .pill { display: inline-block; font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+  .p-ok { color: var(--accent); } .p-soon { color: var(--warn); } .p-over { color: var(--crit); } .p-check { color: var(--warn); border-style: dashed; }
+  .empty { padding: 28px 16px; color: var(--faint); font-size: 14px; text-align: center; }
+
+  .detail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .detail > div { padding: 16px; min-width: 0; }
+  .detail > div + div { border-left: 1px solid var(--line); }
+  .detail h3 { font-family: var(--mono); font-size: 11px; color: var(--faint); font-weight: 500; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+  .email-body { font-size: 13px; line-height: 1.6; color: var(--muted); white-space: pre-wrap; }
+  .email-body b { color: var(--text); font-weight: 500; }
+  pre.json { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  pre.json .k { color: var(--accent); }
+
+  .how { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .step { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .step .n { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+  .step p { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .note { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .detail { grid-template-columns: minmax(0, 1fr); }
+    .detail > div + div { border-left: 0; border-top: 1px solid var(--line); }
+    .how { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  [hidden] { display: none !important; }
+  .back { font-family: var(--mono); font-size: 13px; color: var(--muted); text-decoration: none; }
+  .back:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="top">
+    <div style="display:flex;flex-direction:column;gap:10px;min-width:0">
+      <a class="back" href="../portal.html">&larr; back to portal</a>
+      <div class="brand">BS<sup>2</sup> <span class="kicker">&nbsp;/ invoice watcher · demo</span></div>
+      <h1>Supplier invoices, read and tracked for you</h1>
+      <p class="sub">Supplier emails forwarded to <span class="mono" style="color:var(--text)">invoices@</span> are read by an AI agent. It pulls out the supplier, invoice number, amount, HST and due date, then flags anything due soon.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="run">Check inbox now</button>
+      <button class="btn-ghost" id="reset">Reset demo</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><span class="lbl">Owed to suppliers</span><span class="val" id="s-total">$0.00</span></div>
+    <div class="stat"><span class="lbl">HST paid (ITCs)</span><span class="val" id="s-hst">$0.00</span></div>
+    <div class="stat warn"><span class="lbl">Due in 7 days</span><span class="val" id="s-soon">0</span></div>
+    <div class="stat"><span class="lbl">Emails waiting</span><span class="val" id="s-wait">0</span></div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-h"><h2>invoices@northlinefloors.ca</h2><span class="mono" id="inbox-count"></span></div>
+      <ul class="mails" id="mails"></ul>
+    </div>
+
+    <div class="right">
+      <div class="panel">
+        <div class="panel-h"><h2>Agent log</h2><span class="mono">runs every 15 min</span></div>
+        <div class="log" id="log" aria-live="polite"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><h2>Supplier invoices</h2><span class="mono">click a row to see the source</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Supplier</th><th>Invoice #</th><th class="num">Subtotal</th><th class="num">HST</th><th class="num">Total</th><th>Due</th><th>Status</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" id="detail-panel">
+        <div class="panel-h"><h2 id="detail-title">Email and what the agent pulled out</h2><span class="mono" id="detail-meta"></span></div>
+        <div class="detail">
+          <div><h3>Email received</h3><div class="email-body" id="d-email"></div></div>
+          <div><h3>Extracted data</h3><pre class="json" id="d-json"></pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="how">
+    <div class="step"><span class="n">step 1 · client</span><h3 style="font-size:16px">Forward invoices</h3><p>One email rule sends supplier invoices to a dedicated inbox. Nobody touches the main mailbox.</p></div>
+    <div class="step"><span class="n">step 2 · agent</span><h3 style="font-size:16px">Read every 15 minutes</h3><p>Each new email and PDF is read by Claude, which returns clean fields. Non-invoices are skipped.</p></div>
+    <div class="step"><span class="n">step 3 · output</span><h3 style="font-size:16px">Table and alerts</h3><p>Results land in a secure database with a due-soon email alert. Later, they can feed accounting or Stripe.</p></div>
+  </div>
+  <p class="note">Demo with fictional suppliers and sample emails. Northline Floors is a placeholder name. Dates are relative to today.</p>
+</div>
+
+<script>
+(function () {
+  const DAY = 86400000;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = n => new Date(today.getTime() + n * DAY);
+  const fmt = dt => dt.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+  const iso = dt => dt.toISOString().slice(0,10);
+  const money = n => '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  // Sample mail. "pre" = already processed earlier today.
+  const MAIL = [
+    { id: 1, pre: true, from: 'Interface Tile Supply', time: '8:12 AM', pdf: true,
+      subj: 'Invoice ITS-40921 — carpet tile order #5521',
+      body: 'Hi Northline team,\n\nPlease find attached <b>Invoice ITS-40921</b> for 48 boxes of commercial carpet tile (Graphite, 24"x24").\n\nSubtotal: <b>$6,240.00</b>\nHST (13%): <b>$811.20</b>\nTotal due: <b>$7,051.20</b>\nTerms: Net 30, due <b>{due}</b>.\n\nThanks,\nAccounts Receivable',
+      x: { supplier: 'Interface Tile Supply', invoice_no: 'ITS-40921', subtotal: 6240.00, hst: 811.20, total: 7051.20, due: 21, confidence: 'high' } },
+    { id: 2, pre: true, from: 'Capital Freight', time: '9:40 AM', pdf: true,
+      subj: 'Your invoice CF-118 is ready',
+      body: 'Delivery: Ottawa warehouse to 340 Albert St, Floor 6\nInvoice <b>CF-118</b>\n\nCharges: $380.00\nHST: $49.40\n<b>Amount due: $429.40</b>\nDue on receipt (issued {issued}).',
+      x: { supplier: 'Capital Freight', invoice_no: 'CF-118', subtotal: 380.00, hst: 49.40, total: 429.40, due: -2, confidence: 'high' } },
+    { id: 3, from: 'Laurentian Adhesives', time: '11:05 AM', pdf: true,
+      subj: 'Facture / Invoice LA-2026-0877',
+      body: 'Bonjour / Hello,\n\nFacture <b>LA-2026-0877</b> ci-jointe / attached.\n12 pails pressure-sensitive adhesive\nSous-total / Subtotal: <b>1 104,00 $</b>\nTVH / HST 13%: <b>143,52 $</b>\nTotal: <b>1 247,52 $</b>\nÉchéance / Due: <b>{due}</b>',
+      x: { supplier: 'Laurentian Adhesives', invoice_no: 'LA-2026-0877', subtotal: 1104.00, hst: 143.52, total: 1247.52, due: 5, confidence: 'high', note: 'Bilingual invoice, French number format converted' } },
+    { id: 4, from: 'FloorPro Newsletter', time: '11:30 AM', pdf: false,
+      subj: '5 trends in office flooring for 2027',
+      body: 'This month: biophilic patterns, acoustic underlay, and why LVT keeps winning in open offices...\n\n[Read more] [Unsubscribe]',
+      x: null },
+    { id: 5, from: 'Rideau Underlay Co.', time: '1:18 PM', pdf: true,
+      subj: 'RE: invoice for last week',
+      body: 'Sorry for the delay! Invoice attached for the acoustic underlay rolls.\n\nInv# <b>RU-3310</b>\nTotal <b>$2,034.00</b>\nPlease pay by <b>{due}</b>.\n\n- Marc',
+      x: { supplier: 'Rideau Underlay Co.', invoice_no: 'RU-3310', subtotal: 1800.00, hst: 234.00, total: 2034.00, due: 3, confidence: 'medium', note: 'HST not shown; worked out from total at 13%. Please check.' } },
+    { id: 6, from: 'Bytown Tools Rental', time: '2:47 PM', pdf: true,
+      subj: 'Invoice BTR-77 — floor scraper rental',
+      body: 'Rental: ride-on floor scraper, 3 days\nInvoice <b>BTR-77</b>\nSubtotal $525.00\nHST $68.25\nTotal <b>$593.25</b>\nNet 15, due <b>{due}</b>',
+      x: { supplier: 'Bytown Tools Rental', invoice_no: 'BTR-77', subtotal: 525.00, hst: 68.25, total: 593.25, due: 15, confidence: 'high' } }
+  ];
+  MAIL.forEach(m => {
+    const dueDate = m.x ? d(m.x.due) : null;
+    m.html = m.body.replace('{due}', dueDate ? dueDate.toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '').replace('{issued}', fmt(d(-2)));
+  });
+
+  let state, selected = null, running = false;
+  const $ = id => document.getElementById(id);
+
+  function reset() {
+    state = { done: new Set(MAIL.filter(m => m.pre).map(m => m.id)), busy: null, rows: MAIL.filter(m => m.pre && m.x).map(m => m.id), fresh: null };
+    $('log').innerHTML = '';
+    log('<span class="ok">✓</span> 8:15 AM  ITS-40921 extracted (Interface Tile Supply)');
+    log('<span class="ok">✓</span> 9:45 AM  CF-118 extracted (Capital Freight)');
+    log('… waiting for new mail');
+    selected = 1; render();
+  }
+
+  function log(html) { const l = $('log'); l.insertAdjacentHTML('beforeend', '<div>' + html + '</div>'); l.scrollTop = l.scrollHeight; }
+
+  function status(x) {
+    if (x.confidence !== 'high') return '<span class="pill p-check">check HST</span>';
+    if (x.due < 0) return '<span class="pill p-over">overdue ' + (-x.due) + 'd</span>';
+    if (x.due <= 7) return '<span class="pill p-soon">due in ' + x.due + 'd</span>';
+    return '<span class="pill p-ok">scheduled</span>';
+  }
+
+  function render() {
+    const waiting = MAIL.filter(m => !state.done.has(m.id));
+    $('mails').innerHTML = MAIL.slice().reverse().map(m => {
+      const cls = ['mail', state.done.has(m.id) ? 'done' : '', state.busy === m.id ? 'busy' : '', selected === m.id ? 'sel' : ''].join(' ');
+      return '<li class="' + cls + '" tabindex="0" data-id="' + m.id + '"><span class="dot"></span><div style="min-width:0"><div class="from">' + m.from + '</div><div class="subj">' + m.subj + '</div></div><div class="meta"><span>' + m.time + '</span>' + (m.pdf ? '<span class="clip">PDF</span>' : '') + '</div></li>';
+    }).join('');
+    $('inbox-count').textContent = waiting.length ? waiting.length + ' new' : 'all read';
+
+    const rows = state.rows.map(id => MAIL.find(m => m.id === id)).sort((a, b) => a.x.due - b.x.due);
+    $('rows').innerHTML = rows.length ? rows.map(m => {
+      const x = m.x;
+      return '<tr data-id="' + m.id + '" class="' + (state.fresh === m.id ? 'new' : '') + '"><td class="sup-name">' + x.supplier + '</td><td class="inv">' + x.invoice_no + '</td><td class="num">' + money(x.subtotal) + '</td><td class="num">' + money(x.hst) + '</td><td class="num">' + money(x.total) + '</td><td class="mono" style="font-size:13px">' + fmt(d(x.due)) + '</td><td>' + status(x) + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="empty">No invoices yet. Press “Check inbox now”.</td></tr>';
+
+    const xs = rows.map(m => m.x);
+    $('s-total').textContent = money(xs.reduce((s, x) => s + x.total, 0));
+    $('s-hst').textContent = money(xs.reduce((s, x) => s + x.hst, 0));
+    $('s-soon').textContent = xs.filter(x => x.due <= 7).length;
+    $('s-wait').textContent = waiting.length;
+    $('run').disabled = running || !waiting.length;
+    $('run').textContent = running ? 'Reading…' : (waiting.length ? 'Check inbox now' : 'Inbox is clear');
+    renderDetail();
+  }
+
+  function renderDetail() {
+    const m = MAIL.find(m => m.id === selected);
+    if (!m) return;
+    $('detail-title').textContent = m.subj;
+    $('detail-meta').textContent = m.from + ' · ' + m.time;
+    $('d-email').innerHTML = m.html;
+    let out;
+    if (!state.done.has(m.id)) out = '// not read yet';
+    else if (!m.x) out = '{\n  <span class="k">"is_invoice"</span>: false,\n  <span class="k">"action"</span>: "skipped"\n}';
+    else {
+      const o = { is_invoice: true, supplier: m.x.supplier, invoice_no: m.x.invoice_no, subtotal: m.x.subtotal, hst: m.x.hst, total: m.x.total, currency: 'CAD', due_date: iso(d(m.x.due)), confidence: m.x.confidence };
+      if (m.x.note) o.note = m.x.note;
+      out = JSON.stringify(o, null, 2).replace(/"(\w+)":/g, '<span class="k">"$1"</span>:');
+    }
+    $('d-json').innerHTML = out;
+  }
+
+  const wait = ms => new Promise(r => setTimeout(r, matchMedia('(prefers-reduced-motion: reduce)').matches ? 50 : ms));
+
+  async function run() {
+    if (running) return;
+    running = true; render();
+    const now = new Date().toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
+    log('▶ ' + now + '  checking inbox…');
+    for (const m of MAIL.filter(m => !state.done.has(m.id))) {
+      state.busy = m.id; selected = m.id; render();
+      log('  reading “' + m.subj + '”' + (m.pdf ? ' + PDF' : ''));
+      await wait(1100);
+      state.done.add(m.id); state.busy = null;
+      if (!m.x) log('<span class="sk">–</span> not an invoice, skipped');
+      else {
+        state.rows.push(m.id); state.fresh = m.id;
+        if (m.x.confidence !== 'high') log('<span class="wa">!</span> ' + m.x.invoice_no + ' extracted, flagged for review: ' + m.x.note);
+        else log('<span class="ok">✓</span> ' + m.x.invoice_no + ' extracted (' + m.x.supplier + ')');
+      }
+      render();
+      await wait(350);
+    }
+    const soon = state.rows.map(id => MAIL.find(m => m.id === id).x).filter(x => x.due <= 7).length;
+    log('<span class="wa">✉</span> alert sent: ' + soon + ' invoices due within 7 days');
+    running = false; state.fresh = null; render();
+  }
+
+  function pick(e) {
+    const el = e.target.closest('[data-id]');
+    if (!el) return;
+    selected = +el.dataset.id; render();
+  }
+  $('mails').addEventListener('click', pick);
+  $('mails').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(e); } });
+  $('rows').addEventListener('click', pick);
+  $('run').addEventListener('click', run);
+  $('reset').addEventListener('click', () => { if (!running) reset(); });
+  reset();
+})();
+</script>
+</body>
+</html>
