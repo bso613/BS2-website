@@ -72,6 +72,15 @@
   .tile .tag { font-size: 22px; color: var(--accent); }
   .tile p { color: var(--muted); line-height: 1.5; font-size: 15px; }
   .tile .empty { margin-top: auto; font-size: 13px; color: var(--faint); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; }
+  .tools { display: flex; flex-direction: column; gap: 14px; }
+  .tools h2 { font-size: 20px; font-weight: 500; }
+  .tool-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .tool { display: flex; flex-direction: column; gap: 8px; padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-decoration: none; color: var(--text); }
+  .tool:hover { border-color: var(--accent); }
+  .tool .tag { font-size: 13px; color: var(--accent); }
+  .tool h3 { font-size: 18px; font-weight: 500; }
+  .tool p { color: var(--muted); line-height: 1.5; font-size: 15px; }
+  .tool .go { margin-top: auto; font-size: 13px; color: var(--accent); }
   .help { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 24px; border: 1px solid var(--line); border-radius: 12px; }
   .help p { color: var(--muted); }
 
@@ -151,6 +160,10 @@
         <div class="tile"><p class="tag mono">invoices</p><p>See what's due and download past invoices.</p><p class="empty mono">coming soon</p></div>
         <div class="tile"><p class="tag mono">payments</p><p>Pay securely by card and see your history.</p><p class="empty mono">coming soon</p></div>
       </div>
+      <div class="tools" id="toolsBox" hidden>
+        <h2>Your tools</h2>
+        <div class="tool-list" id="toolList"></div>
+      </div>
       <div class="help">
         <p>Questions about your project?</p>
         <a class="btn btn-ghost" href="mailto:ben.a.smith.613@gmail.com?subject=BS2%20client%20portal">Email Ben</a>
@@ -172,6 +185,15 @@
   const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
   const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx";
 
+  // Tools each client can open from the portal, by sign-in email (lowercase).
+  // To give a client a tool, add their email and the tool's id below.
+  const TOOLS = {
+    "invoice-watcher": { tag: "demo · ai", name: "Invoice watcher", text: "An AI agent reads supplier invoice emails and tracks amounts, HST and due dates.", href: "tools/invoice-watcher.html" }
+  };
+  const CLIENT_TOOLS = {
+    "ben.a.smith.613@gmail.com": ["invoice-watcher"]
+  };
+
   const $ = id => document.getElementById(id);
   const configured = SUPABASE_URL.startsWith("https://") && !SUPABASE_KEY.startsWith("PASTE");
   const redirectTo = location.origin + location.pathname;
@@ -182,6 +204,14 @@
     $("signinView").hidden = view !== "signin";
     $("dashView").hidden = view !== "dash";
     $("signout").hidden = view !== "dash";
+  }
+  function showTools(email) {
+    const ids = CLIENT_TOOLS[(email || "").toLowerCase()] || [];
+    $("toolList").innerHTML = ids.filter(id => TOOLS[id]).map(id => {
+      const t = TOOLS[id];
+      return '<a class="tool" href="' + t.href + '"><p class="tag mono">' + t.tag + '</p><h3>' + t.name + '</h3><p>' + t.text + '</p><span class="go mono">open &rarr;</span></a>';
+    }).join("");
+    $("toolsBox").hidden = !ids.length;
   }
   function note(text, kind) {
     const m = $("signinMsg"); m.textContent = text; m.className = "msg " + (kind || ""); m.hidden = false;
@@ -194,7 +224,7 @@
     $("forgotBtn").disabled = true;
     $("googleBtn").disabled = true;
     // Preview the dashboard while setting up: add #preview to the URL.
-    const preview = () => { if (location.hash === "#preview") { show("dash"); $("who").textContent = "preview mode"; } };
+    const preview = () => { if (location.hash === "#preview") { show("dash"); $("who").textContent = "preview mode"; showTools("ben.a.smith.613@gmail.com"); } };
     preview(); addEventListener("hashchange", preview);
   } else {
     // Read the link details before Supabase clears them from the URL.
@@ -207,7 +237,7 @@
 
     const render = session => {
       if (session && needsPassword) show("setpw");
-      else if (session) { $("who").textContent = session.user.email; show("dash"); }
+      else if (session) { $("who").textContent = session.user.email; showTools(session.user.email); show("dash"); }
       else show("signin");
     };
     sb.auth.getSession().then(({ data, error }) => {
