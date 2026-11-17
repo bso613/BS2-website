@@ -168,7 +168,18 @@
       if (session) { $("who").textContent = session.user.email; show("dash"); }
       else show("signin");
     };
-    sb.auth.getSession().then(({ data }) => render(data.session));
+    // If a sign-in link failed, Supabase puts the reason in the URL. Show it.
+    const params = new URLSearchParams(location.hash.slice(1) + "&" + location.search.slice(1));
+    const linkError = params.get("error_description") || params.get("error");
+    sb.auth.getSession().then(({ data, error }) => {
+      render(data.session);
+      if (!data.session && (linkError || error)) {
+        const why = (linkError || error.message).replace(/\+/g, " ");
+        note(/expired|invalid/i.test(why)
+          ? "That sign-in link has expired or was already used. Enter your email below for a new one."
+          : "Sign-in didn't work: " + why, "warn");
+      }
+    });
     sb.auth.onAuthStateChange((_e, session) => render(session));
 
     $("signinForm").addEventListener("submit", async e => {
