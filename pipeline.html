@@ -89,6 +89,13 @@
   .q label { font-size: 13px; color: var(--muted); }
   textarea, input[type=text] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; }
   textarea { min-height: 64px; resize: vertical; }
+  select, input[type=date], input[type=datetime-local] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; color-scheme: dark; }
+  .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opt { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; border: 1px solid var(--line-2); border-radius: 999px; padding: 5px 11px; cursor: pointer; color: var(--muted); }
+  .opt:has(input:checked) { border-color: var(--accent); color: var(--text); }
+  .opt input { accent-color: var(--accent); margin: 0; }
+  .wide { grid-column: 1 / -1; }
+  .stagebox { border: 1px solid var(--line-2); border-radius: 10px; padding: 14px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
   .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
   .line { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 14px; }
   .line span:first-child { color: var(--muted); }
@@ -124,15 +131,20 @@
   <p class="empty" id="gate">Loading…</p>
 
   <form class="record" id="addForm" hidden>
-    <h2 style="font-size:22px">Add a lead</h2>
-    <p class="note">For leads that didn't come through the intake form, like a referral or a phone call.</p>
+    <h2 style="font-size:22px" id="addTitle">Add a lead</h2>
+    <p class="note" id="addNote">Same questions as your intake form, so every lead looks the same. Only name and email are required.</p>
     <div class="two">
       <div class="q"><label for="nName">Name</label><input type="text" id="nName" required></div>
-      <div class="q"><label for="nEmail">Email</label><input type="text" id="nEmail" required></div>
-      <div class="q"><label for="nBiz">Business</label><input type="text" id="nBiz"></div>
-      <div class="q"><label for="nNote">How they found you</label><input type="text" id="nNote" placeholder="e.g. Referral from Sam"></div>
+      <div class="q"><label for="nEmail">Email</label><input type="text" id="nEmail" required inputmode="email"></div>
+      <div class="q wide"><label for="nBiz">Business name and website or social link</label><input type="text" id="nBiz"></div>
     </div>
-    <div class="row"><button class="btn solid" type="submit">Add lead</button><button class="btn" type="button" id="cancelAdd">Cancel</button></div>
+    <div class="two" id="intakeFields"></div>
+    <div class="stagebox" id="stageBox">
+      <div class="q" style="flex:1;min-width:220px"><label for="nStage">Where are things at?</label>
+        <select id="nStage"><option value="lead">New lead, no call yet</option><option value="call">We already had the 30-min call</option></select></div>
+      <div class="q" id="nCallWrap" hidden><label for="nCall">Call date</label><input type="date" id="nCall"></div>
+    </div>
+    <div class="row"><button class="btn solid" type="submit" id="addSubmit">Add lead</button><button class="btn" type="button" id="cancelAdd">Cancel</button></div>
   </form>
 
   <div class="boardwrap" id="boardwrap" hidden><div class="board" id="board"></div></div>
@@ -162,6 +174,50 @@ const ONBOARD_QS = [
   "What would make this a win in 3 months?",
 ];
 const ONBOARD_TASKS = ["Send the call summary email", "Get access to their current tools", "Confirm budget and timeline", "Build the quote in the quote builder"];
+// Same questions and labels as the Tally intake form, so manual and Tally leads match.
+const INTAKE = [
+  { k: "What does your business do, in one line?", t: "text" },
+  { k: "Industry", t: "one", o: ["Restaurant / hospitality", "Retail", "Trades / construction", "Health & wellness", "Professional services", "Other"] },
+  { k: "Team size", t: "one", o: ["Just me", "2–5", "6–20", "20+"] },
+  { k: "What can I help with?", t: "many", o: ["New website", "Bookings / scheduling", "Quotes, invoicing & payments", "CRM / sales pipeline", "Data & dashboards", "AI / automation", "Not sure yet"] },
+  { k: "What's the biggest time-waster in your week right now?", t: "area" },
+  { k: "What tools do you use today?", t: "many", o: ["Google Workspace", "Microsoft 365", "Square / Shopify / Clover", "QuickBooks / Wave", "Spreadsheets", "Pen and paper", "Other"] },
+  { k: "What's your yearly budget for tech, including setup and ongoing support? (CAD)", t: "one", o: ["Under $2k", "$2k–5k", "$5k–10k", "$10k+", "Not sure yet"] },
+  { k: "Timeline", t: "one", o: ["ASAP", "1–3 months", "Just exploring"] },
+  { k: "Preferred language for our call", t: "one", o: ["English", "Français", "Español"] },
+  { k: "Anything else I should know before we talk?", t: "area" },
+  { k: "How they found you", t: "text", ph: "e.g. Referral from Sam" },
+];
+let editing = null;
+function intakeFields(vals) {
+  const has = (v, x) => (", " + (v || "") + ", ").includes(", " + x + ", ");
+  return INTAKE.map((f, i) => {
+    const v = vals[f.k] || "", id = "in" + i, lab = `<label for="${id}">${esc(f.k)}</label>`;
+    if (f.t === "text") return `<div class="q">${lab}<input type="text" id="${id}" value="${esc(v)}" placeholder="${esc(f.ph || "")}"></div>`;
+    if (f.t === "area") return `<div class="q wide">${lab}<textarea id="${id}">${esc(v)}</textarea></div>`;
+    if (f.t === "one") return `<div class="q">${lab}<select id="${id}"><option value="">Pick one</option>${f.o.map(x => `<option ${v === x ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></div>`;
+    return `<div class="q wide"><span class="note">${esc(f.k)}</span><div class="opts" id="${id}">${f.o.map(x => `<label class="opt"><input type="checkbox" value="${esc(x)}" ${has(v, x) ? "checked" : ""}>${esc(x)}</label>`).join("")}</div></div>`;
+  }).join("");
+}
+function readIntake(prev) {
+  const out = { ...prev };
+  INTAKE.forEach((f, i) => {
+    const el = $("in" + i);
+    const v = f.t === "many" ? [...el.querySelectorAll("input:checked")].map(x => x.value).join(", ") : el.value.trim();
+    if (v) out[f.k] = v; else delete out[f.k];
+  });
+  return out;
+}
+function openLeadForm(l) {
+  editing = l || null;
+  $("addTitle").textContent = l ? "Edit intake answers" : "Add a lead";
+  $("addSubmit").textContent = l ? "Save answers" : "Add lead";
+  $("stageBox").hidden = !!l;
+  $("nName").value = l?.name || ""; $("nEmail").value = l?.email || ""; $("nBiz").value = l?.business || "";
+  $("intakeFields").innerHTML = intakeFields(l?.intake || {});
+  $("nStage").value = "lead"; $("nCallWrap").hidden = true; $("nCall").value = new Date().toLocaleDateString("en-CA");
+  $("addForm").hidden = false; $("addForm").scrollIntoView({ behavior: "smooth", block: "start" }); $("nName").focus();
+}
 const TABS = [
   { id: "intake", name: "intake", from: 0 }, { id: "onboard", name: "onboarding", from: 1 },
   { id: "quote", name: "quote", from: 2 }, { id: "agreement", name: "agreement", from: 3 },
@@ -227,7 +283,7 @@ function renderRecord() {
   if (!l) { rec.hidden = true; return; }
   rec.hidden = false;
   const at = idx(l.stage), next = STAGES[at + 1];
-  const nextLabel = { call: "Book the 30-min call", quote: "Send quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
+  const nextLabel = { call: "Log the 30-min call", quote: "Send quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
   rec.innerHTML = `
     <div class="rhead">
       <div><h2>${esc(l.name || "No name")}</h2><p>${esc(l.business || "")} · <span class="mono">${esc(l.email || "")}</span></p></div>
@@ -237,7 +293,7 @@ function renderRecord() {
         <button class="btn" id="lost" type="button">Mark lost</button>
       </div>
     </div>
-    <div id="callPick" hidden class="row"><label class="note" for="callAt">Call date and time</label><input type="datetime-local" id="callAt" style="max-width:240px"><button class="btn solid" id="confirmCall" type="button">Save call</button></div>
+    <div id="callPick" hidden class="row"><label class="note" for="callAt">When was or is the call? Nothing is sent to them.</label><input type="datetime-local" id="callAt" style="max-width:240px"><button class="btn solid" id="confirmCall" type="button">Save call</button></div>
     <div class="stepper">${STAGES.map((s, i) => `<span class="step ${i < at ? "done" : i === at ? "now" : ""}">${i < at ? "✓ " : ""}${s.name}</span>`).join("")}</div>
     <div class="tabs" role="tablist">${TABS.map(t => `<button class="tab" role="tab" type="button" data-tab="${t.id}" aria-selected="${tab === t.id}">${t.name}${at < t.from ? `<span class="lock">· later</span>` : ""}</button>`).join("")}</div>
     <div class="pane" id="pane">${pane(l, at)}</div>`;
@@ -248,7 +304,8 @@ function pane(l, at) {
   if (tab === "intake") {
     const rows = [["Name", l.name], ["Email", l.email], ["Business", l.business], ...Object.entries(l.intake || {})];
     return `<p class="src">${l.source === "tally" ? "from tally intake form" : "added by you"} · ${when(l.created_at)}</p>
-      <div class="kv">${rows.map(([k, v]) => `<div>${esc(k)}</div><div>${esc(v)}</div>`).join("")}</div>`;
+      <div class="kv">${rows.map(([k, v]) => `<div>${esc(k)}</div><div>${esc(v)}</div>`).join("")}</div>
+      <button class="btn" id="editIntake" type="button" style="align-self:flex-start">${Object.keys(l.intake || {}).length > 1 ? "Edit answers" : "Fill in intake answers"}</button>`;
   }
   if (tab === "onboard") {
     if (at < 1) return locked("onboard");
@@ -322,8 +379,9 @@ document.addEventListener("click", async e => {
   if (t) { tab = t.dataset.tab; renderRecord(); return; }
   const l = lead();
   const id = e.target.id;
-  if (id === "addBtn") { $("addForm").hidden = false; $("nName").focus(); return; }
-  if (id === "cancelAdd") { $("addForm").hidden = true; return; }
+  if (id === "addBtn") { openLeadForm(null); return; }
+  if (id === "editIntake") { openLeadForm(lead()); return; }
+  if (id === "cancelAdd") { editing = null; $("addForm").hidden = true; return; }
   if (!l) return;
   if (id === "advance") {
     const next = STAGES[idx(l.stage) + 1];
@@ -338,7 +396,7 @@ document.addEventListener("click", async e => {
   if (id === "confirmCall") {
     const v = $("callAt").value; if (!v) { toast("Pick a date and time first.", true); return; }
     await save(l, { stage: "call", call_at: new Date(v).toISOString() });
-    await logEvent(l, "Ben", "30-min call booked for " + when(new Date(v)).replace(/\.$/, "") + ". Onboarding started.");
+    await logEvent(l, "Ben", (new Date(v) < new Date() ? "30-min call held " : "30-min call booked for ") + when(new Date(v)).replace(/\.$/, "") + ". Onboarding started.");
     tab = "onboard"; render(); toast("Moved to 30-min call.");
   }
   if (id === "back") {
@@ -376,14 +434,22 @@ document.addEventListener("input", e => {
   }
 });
 document.addEventListener("change", e => { if (e.target.dataset.qf === "plan") e.target.dispatchEvent(new Event("input", { bubbles: true })); });
+$("nStage").addEventListener("change", () => { $("nCallWrap").hidden = $("nStage").value !== "call"; });
 $("addForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const row = { name: $("nName").value.trim(), email: $("nEmail").value.trim().toLowerCase(), business: $("nBiz").value.trim(), source: "manual",
-    intake: $("nNote").value.trim() ? { "How they found you": $("nNote").value.trim() } : {} };
+  const base = { name: $("nName").value.trim(), email: $("nEmail").value.trim().toLowerCase(), business: $("nBiz").value.trim() };
+  if (editing) {
+    const l = editing, intake = readIntake(l.intake || {});
+    await save(l, { ...base, intake }); await logEvent(l, "Ben", "Intake answers updated.");
+    editing = null; $("addForm").hidden = true; tab = "intake"; render(); toast("Saved."); return;
+  }
+  const row = { ...base, source: "manual", intake: readIntake({}) };
+  const had = $("nStage").value === "call";
+  if (had) { row.stage = "call"; row.call_at = new Date(($("nCall").value || new Date().toLocaleDateString("en-CA")) + "T12:00").toISOString(); }
   const { data, error } = await sb.from("leads").insert(row).select().single();
   if (error) { toast("Couldn't add: " + error.message, true); return; }
-  LEADS.unshift(data); sel = data.id; tab = "intake";
-  await logEvent(data, "Ben", "Lead added by hand.");
+  LEADS.unshift(data); sel = data.id; tab = had ? "onboard" : "intake";
+  await logEvent(data, "Ben", had ? "Lead added by hand. 30-min call already held " + new Date(row.call_at).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) + "." : "Lead added by hand.");
   $("addForm").reset(); $("addForm").hidden = true; $("gate").hidden = true; render();
 });
 
