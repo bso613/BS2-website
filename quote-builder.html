@@ -88,13 +88,37 @@
   .empty { font-size: 13px; color: var(--faint); font-style: italic; }
   .toast { font-size: 13px; color: var(--accent); min-height: 1em; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  [hidden] { display: none !important; }
+  .leadbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .leadbar label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px; }
+  .leadbar select { max-width: 380px; }
+  .leadbar .st { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+  .leadbar .st.ok { color: var(--accent); }
+  .leadbar a { color: var(--accent); font-size: 14px; }
+  @media print {
+    @page { margin: 14mm; }
+    :root { --bg: #fff; --surface: #fff; --surface-2: #fff; --line: #d9dde3; --line-2: #c4c9d1; --text: #111; --muted: #333; --faint: #555; --accent: #0b7a5c; }
+    body { background: #fff !important; color: #111; }
+    .top, .leadbar, .grid > .col:first-child, .quote .row, .toast, #toast { display: none !important; }
+    .page { padding: 0 !important; max-width: none; }
+    .grid { display: block !important; }
+    .quote { position: static !important; border: 0 !important; padding: 0 !important; }
+    .big > div { border: 1px solid #d9dde3; }
+  }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 </head>
 <body>
 <div class="page">
   <div class="top">
     <p class="logo">BS<sup>2</sup><span>quote_builder()</span></p>
     <p>prices checked nov 16, 2026 · update the costs when they change</p>
+  </div>
+
+  <div class="leadbar" id="leadbar" hidden>
+    <label>Quote for <select id="leadPick"><option value="">Pick a lead from your pipeline</option></select></label>
+    <span class="st" id="leadSt"></span>
+    <a id="backPipe" href="pipeline.html" hidden>← Back to pipeline</a>
   </div>
 
   <div class="grid">
@@ -190,8 +214,8 @@
         </div>
 
         <div class="row">
-          <button class="btn solid" id="copy" type="button">Copy quote as text</button>
-          <button class="btn" id="reset" type="button">Reset example</button>
+          <button class="btn solid" id="pdf" type="button">Download PDF</button>
+          <button class="btn" id="reset" type="button">Start over</button>
         </div>
         <p class="toast" id="toast" role="status"></p>
       </section>
@@ -218,6 +242,7 @@ const WORK = [
 ];
 
 let state;
+let SB = null, LEADS = [], LEAD = null, leadTimer = null; // pipeline link, set up at the bottom
 const $ = id => document.getElementById(id);
 const PLANS = {
   care: { name: "Care", price: 100, desc: "Monitoring, security updates, backup checks and small fixes" },
@@ -334,44 +359,14 @@ function render() {
 
   $("vercelFlag").hidden = !state.tools.some(x => x.on && /vercel/i.test(x.name) && +x.cost === 0);
   save();
-}
-
-function quoteText() {
-  const c = calc();
-  const out = [];
-  out.push(`BS² · Ben Smith Business Solutions`);
-  out.push(`Quote ${$("qnum").value} for ${$("client").value}: ${$("project").value}`);
-  out.push(`Valid for ${$("valid").value} days`, "");
-  out.push(c.plan ? `SETUP, SPREAD OVER 12 MONTHS (paid to BS²)` : `ONE-TIME SETUP (paid to BS²)`);
-  c.setupLines.forEach(l => out.push(`  ${l.label}: ${l.hrs} h = ${money(l.hrs * c.rate)}`));
-  if (c.hst) out.push(`  HST: ${money(c.setupTax)}`);
-  out.push(`  Total: ${money(c.setup + c.setupTax)}`);
-  if (c.plan) {
-    if (c.planFee) out.push(`  Payment plan fee (${num("planfee")}%): ${money(c.planFee)}`);
-    out.push(`  Spread over 12 monthly payments of ${money(c.planMonthly)}, no deposit.`);
-    out.push(`  12-month minimum term. If you end early, the unpaid setup balance is due. Pay it off early at any time, no penalty.`);
-  }
-  out.push("");
-  out.push(`MONTHLY MAINTENANCE (paid to BS²)`);
-  const plq = PLANS[$("mplan").value] || PLANS.custom;
-  out.push(`  ${plq.name} plan: ${plq.desc}`);
-  out.push(`  ${money(c.maint + c.maintTax)} per month${c.hst ? " incl. HST" : ""}`);
-  out.push(`  Extra work at ${money(c.rate)}/h. Unused hours do not carry over.`, "");
-  out.push(`TOOL SUBSCRIPTIONS (in your name, paid to each provider at cost, no markup)`);
-  c.on.forEach(x => out.push(`  ${x.name} (${x.plan}): ${money(+x.cost || 0, x.cur)}/${x.per === "month" ? "mo" : "yr"}${x.cur === "USD" && +x.cost ? ` (about ${money(c.toolCad(x))})` : ""}`));
-  out.push(`  About ${money(c.toolsMonthly)} per month`, "");
-  if (c.plan) {
-    out.push(`Monthly, months 1-12: about ${money(c.monthlyAll)}`);
-    out.push(`Monthly, from month 13: about ${money(c.monthlyAfter)}`);
-  } else out.push(`Monthly, all-in: about ${money(c.monthlyAll)}`);
-  out.push(`First year, all-in: about ${money(c.yearAll)}`);
-  return out.join("\n");
+  queueLeadSave();
 }
 
 function toast(msg) { $("toast").textContent = msg; setTimeout(() => { if ($("toast").textContent === msg) $("toast").textContent = ""; }, 3000); }
 
 document.addEventListener("input", e => {
   const el = e.target;
+  if (el.id === "leadPick") return;
   if (el.id === "mplan" && PLANS[el.value].price !== null) $("maint").value = PLANS[el.value].price;
   if (el.id === "maint") { const match = Object.keys(PLANS).find(k => PLANS[k].price === parseFloat(el.value)); $("mplan").value = match || "custom"; }
   if (el.dataset.i !== undefined) {
@@ -392,13 +387,13 @@ document.addEventListener("click", e => {
 });
 $("addTool").onclick = () => { state.tools.push({ on: true, name: "New tool", plan: "Plan", cost: 0, cur: "USD", per: "month", hrs: 3 }); renderTools(); render(); };
 $("addWork").onclick = () => { state.work.push({ name: "New work item", hrs: 3 }); renderWork(); render(); };
-$("reset").onclick = () => { state = fresh(); try { localStorage.removeItem("bs2-quote-v2"); } catch (e) {} location.reload(); };
-$("copy").onclick = () => {
-  const text = quoteText();
-  navigator.clipboard.writeText(text).then(() => toast("Copied. Paste it into an email or doc.")).catch(() => {
-    const ta = document.createElement("textarea"); ta.value = text; ta.style.cssText = "width:100%;height:220px;margin-top:8px;background:var(--surface-2);color:var(--text);border:1px solid var(--line-2);border-radius:8px;padding:10px;font-family:var(--mono);font-size:12px";
-    $("toast").after(ta); ta.select(); toast("Couldn't copy automatically. The text is selected below, press Ctrl+C.");
-  });
+$("reset").onclick = () => {
+  if (LEAD) { state = fresh(); fieldIds.forEach(id => { const d = $(id).defaultValue; if (d !== undefined && $(id).tagName === "INPUT") $(id).value = d; }); $("mplan").value = "plus"; $("maint").value = 200; $("pay").value = "upfront"; $("hst").value = "0"; fillFromLead(LEAD, true); renderTools(); renderWork(); render(); return; }
+  state = fresh(); try { localStorage.removeItem("bs2-quote-v2"); } catch (e) {} location.reload();
+};
+$("pdf").onclick = () => {
+  const t = document.title; document.title = ($("qnum").value || "Quote") + " " + ($("client").value || "");
+  window.print(); document.title = t;
 };
 
 const saved = load();
@@ -406,6 +401,70 @@ state = saved ? { tools: saved.tools, work: saved.work || [] } : fresh();
 if (saved && saved.fields) fieldIds.forEach(id => { if (saved.fields[id] !== undefined) $(id).value = saved.fields[id]; });
 if (saved && saved.fields && saved.fields.mplan === undefined) { $("mplan").value = "plus"; $("maint").value = 200; }
 renderTools(); renderWork(); render();
+
+// ---- Pipeline link: pick a lead, prefill from their record, and save the quote back to it ----
+const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
+const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx"; // public by design
+const PLAN_NAME = { care: "Care", plus: "Plus", pro: "Pro", custom: "Custom" };
+const qs = new URLSearchParams(location.search);
+const embed = qs.has("embed");
+
+function leadLabel(l) { return (l.business || l.name || l.email) + (l.business && l.name ? " · " + l.name : "") + " (" + l.stage + ")"; }
+function fillFromLead(l, fresh) {
+  const q = l.quote || {};
+  if (!fresh && q.builder && q.builder.tools) {
+    state = { tools: q.builder.tools, work: q.builder.work || [] };
+    fieldIds.forEach(id => { if (q.builder.fields && q.builder.fields[id] !== undefined) $(id).value = q.builder.fields[id]; });
+  } else {
+    $("project").value = (l.intake || {})["What can I help with?"] || "";
+    if (q.plan) { const k = Object.keys(PLAN_NAME).find(k => PLAN_NAME[k] === q.plan); if (k && PLANS[k].price !== null) { $("mplan").value = k; $("maint").value = PLANS[k].price; } }
+    if (q.spread) $("pay").value = "plan";
+  }
+  $("client").value = l.business || l.name || "";
+  $("qnum").value = q.num || "Q-" + new Date().getFullYear() + "-" + String(l.id).slice(0, 4).toUpperCase();
+}
+function queueLeadSave() {
+  if (!LEAD || !SB) return;
+  $("leadSt").className = "st"; $("leadSt").textContent = "saving…";
+  clearTimeout(leadTimer); leadTimer = setTimeout(saveLead, 800);
+}
+async function saveLead() {
+  const c = calc(), fields = {}; fieldIds.forEach(id => fields[id] = $(id).value);
+  const quote = { ...(LEAD.quote || {}),
+    num: $("qnum").value, project: $("project").value,
+    setup: Math.round((c.setup + c.setupTax) * 100) / 100,
+    plan: PLAN_NAME[$("mplan").value] || "Custom", maint: c.maint, spread: c.plan, planfee: num("planfee"),
+    monthly: Math.round(c.monthlyAll * 100) / 100, monthly_after: Math.round(c.monthlyAfter * 100) / 100,
+    tools_monthly: Math.round(c.toolsMonthly * 100) / 100, first_year: Math.round(c.yearAll),
+    builder: { tools: state.tools, work: state.work, fields }, saved_at: new Date().toISOString() };
+  const { error } = await SB.from("leads").update({ quote, updated_at: new Date().toISOString() }).eq("id", LEAD.id);
+  if (error) { $("leadSt").className = "st"; $("leadSt").textContent = "couldn't save: " + error.message; return; }
+  LEAD.quote = quote;
+  $("leadSt").className = "st ok"; $("leadSt").textContent = "✓ saved to " + (LEAD.name || "their") + "'s pipeline record";
+}
+function pickLead(id) {
+  clearTimeout(leadTimer);
+  LEAD = LEADS.find(l => l.id === id) || null;
+  $("leadPick").value = LEAD ? LEAD.id : "";
+  $("backPipe").hidden = !LEAD; if (LEAD) $("backPipe").href = "pipeline.html?" + (embed ? "embed=1&" : "") + "lead=" + LEAD.id;
+  if (!LEAD) { $("leadSt").className = "st"; $("leadSt").textContent = "not linked: this quote only stays in this browser"; return; }
+  fillFromLead(LEAD, false); renderTools(); renderWork();
+  const had = !!(LEAD.quote && LEAD.quote.builder);
+  render();
+  if (!had) queueLeadSave(); else { clearTimeout(leadTimer); $("leadSt").className = "st ok"; $("leadSt").textContent = "✓ linked to " + (LEAD.name || "this lead") + "'s pipeline record"; }
+}
+(async () => {
+  if (!window.supabase) return;
+  SB = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const { data } = await SB.auth.getSession(); if (!data.session) return;
+  const { data: ok } = await SB.rpc("is_admin"); if (ok !== true) return;
+  const { data: leads } = await SB.from("leads").select("*").neq("stage", "lost").order("created_at", { ascending: false });
+  LEADS = leads || [];
+  $("leadPick").innerHTML = '<option value="">Pick a lead from your pipeline</option>' + LEADS.map(l => `<option value="${l.id}">${esc(leadLabel(l))}</option>`).join("");
+  $("leadbar").hidden = false;
+  $("leadPick").addEventListener("change", e => pickLead(e.target.value));
+  pickLead(qs.get("lead") || "");
+})();
 </script>
 </body>
 </html>

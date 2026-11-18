@@ -89,6 +89,9 @@
   .q label { font-size: 13px; color: var(--muted); }
   textarea, input[type=text] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; }
   textarea { min-height: 64px; resize: vertical; }
+  .grp { font-size: 15px; font-weight: 500; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .star { color: var(--accent); }
+  .qnote { font-size: 12px; color: var(--faint); line-height: 1.5; border-left: 2px solid var(--line-2); padding-left: 10px; margin: 0; }
   select, input[type=date], input[type=datetime-local] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; color-scheme: dark; }
   .opts { display: flex; flex-wrap: wrap; gap: 6px; }
   .opt { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; border: 1px solid var(--line-2); border-radius: 999px; padding: 5px 11px; cursor: pointer; color: var(--muted); }
@@ -167,14 +170,43 @@ const STAGES = [
   { id: "agreement", name: "agreement",   hint: "Quote accepted, agreement out to sign." },
   { id: "client",    name: "client",      hint: "Signed. Portal account created." },
 ];
-const ONBOARD_QS = [
-  "What does a normal week look like, and where does the admin pile up?",
-  "Walk me through how a job goes from first contact to getting paid.",
-  "Which tools and accounts do you use today, and who has the logins?",
-  "Who makes the final decision on this project?",
-  "What would make this a win in 3 months?",
+// Call questions, grouped. ★ = ask first if time runs short. Keep the ids: answers are saved under them.
+const ONBOARD = [
+  { h: "The business", qs: [
+    { id: "0", star: true, q: "What does a normal week look like, and where does the admin pile up?" },
+    { id: "b1", star: true, q: "How many customers or jobs a month now, and where do you want to be in a year?" },
+    { id: "b2", q: "Who does the admin today: you, a partner, a bookkeeper? How many hours a week?" },
+    { id: "b3", q: "What does a typical job or sale look like, and its price range?" },
+  ] },
+  { h: "How work flows", qs: [
+    { id: "1", star: true, q: "Walk me through how a job goes from first contact to getting paid." },
+    { id: "f1", q: "How do customers find you and book: phone, email, website, social, referrals?" },
+    { id: "f2", star: true, q: "How do you build quotes today, and how many turn into jobs?" },
+    { id: "f3", q: "Where do things fall through the cracks: follow-ups, scheduling, chasing payments?" },
+  ] },
+  { h: "Invoices and money", qs: [
+    { id: "m1", star: true, q: "Are you registered for HST?" },
+    { id: "m2", star: true, q: "How do your customers usually pay (card, debit, bank transfer, cheque)? Roughly what share by card?",
+      note: "Card fee strategy: quote one price, and offer 2 to 3% off for bank transfer or debit on big invoices. A card surcharge up to 2.4% is allowed on Visa and Mastercard, but needs 30 days' notice to Visa, Mastercard and Stripe, and isn't allowed on debit or in Quebec. For monthly plans, absorb the fee and make bank debit the default." },
+    { id: "m3", q: "How many invoices do you send a month? Deposits? Payment terms? How often are people late?" },
+    { id: "m4", q: "How many bills come in a month (suppliers, subscriptions), and how do they arrive?" },
+    { id: "m5", q: "Do you have an accountant or bookkeeper? What software do they want (QuickBooks, Xero)?" },
+    { id: "m6", q: "Which bank do you use?" },
+  ] },
+  { h: "Tools and accounts", qs: [
+    { id: "2", star: true, q: "Which tools and accounts do you use today, and who has the logins?" },
+    { id: "t1", q: "Do you have a domain, website and business email? Who controls them?" },
+    { id: "t2", q: "Anything you pay for but don't use, or love and want to keep?" },
+    { id: "t3", q: "Any customer data you keep (lists, photos, files)? Where does it live?" },
+  ] },
+  { h: "Goals and next steps", qs: [
+    { id: "4", star: true, q: "What would make this a win in 3 months?" },
+    { id: "g1", q: "If one thing were automated tomorrow, what would it be?" },
+    { id: "3", star: true, q: "Who makes the final decision on this project?" },
+    { id: "g2", q: "Budget and timing: does the range from the intake still hold, and when would you start?" },
+  ] },
 ];
-const ONBOARD_TASKS = ["Send the call summary email", "Get access to their current tools", "Confirm budget and timeline", "Build the quote in the quote builder"];
+const ONBOARD_TASKS = ["Send the call summary email", "Get access to their current tools", "Confirm budget and timeline", "Build the quote in the quote builder", "Ask them to send 1 or 2 past quotes or invoices, their logo and HST number"];
 // Same questions and labels as intake.html (and the old Tally form), so every lead matches.
 const INTAKE = [
   { k: "What does your business do, in one line?", t: "text" },
@@ -221,10 +253,16 @@ function openLeadForm(l) {
 }
 const TABS = [
   { id: "intake", name: "intake", from: 0 }, { id: "onboard", name: "onboarding", from: 1 },
-  { id: "quote", name: "quote", from: 2 }, { id: "agreement", name: "agreement", from: 3 },
+  { id: "quote", name: "quote", from: 1 }, { id: "agreement", name: "agreement", from: 3 },
   { id: "messages", name: "messages", from: 0 }, { id: "portal", name: "portal", from: 4 },
 ];
 const PLANS = { Care: 100, Plus: 200, Pro: 300 };
+// What a saved quote means each month. Older quotes have no maint/planfee, so fall back to the plan price and 10%.
+function qMoney(q) {
+  const maint = q.maint != null ? +q.maint : PLANS[q.plan || "Plus"] || 0;
+  const fee = q.planfee != null ? +q.planfee : 10;
+  return { maint, fee, spread: q.spread ? (+q.setup || 0) * (1 + fee / 100) / 12 : 0 };
+}
 
 let LEADS = [], EVENTS = {}, sel = null, tab = "intake";
 const $ = id => document.getElementById(id);
@@ -254,6 +292,8 @@ async function load() {
   if (error) { $("gate").textContent = "Couldn't load the pipeline: " + error.message; return; }
   LEADS = leads; EVENTS = {};
   (events || []).forEach(e => (EVENTS[e.lead_id] ||= []).push(e));
+  const want = new URLSearchParams(location.search).get("lead");
+  if (want && LEADS.some(x => x.id === want) && !sel) { sel = want; tab = "quote"; }
   if (!sel && LEADS.length) sel = LEADS[0].id;
   $("gate").hidden = LEADS.length > 0;
   $("gate").innerHTML = "No leads yet. New intake form answers appear here automatically, or click <b>+ Add lead</b>.";
@@ -265,7 +305,7 @@ function chips(l) {
   const at = idx(l.stage), c = [];
   c.push(`<span class="chip ${l.source === "manual" ? "" : "ok"}">${l.source === "manual" ? "added by you" : "intake ✓"}</span>`);
   if (l.call_at) c.push(`<span class="chip ${at > 1 ? "ok" : "wait"}">${at > 1 ? "call ✓" : "call " + when(l.call_at)}</span>`);
-  if (l.quote) c.push(`<span class="chip ${at >= 3 ? "ok" : "wait"}">${at >= 3 ? "quote ✓" : "quote sent"}</span>`);
+  if (l.quote) c.push(`<span class="chip ${at >= 3 ? "ok" : "wait"}">${at >= 3 ? "quote ✓" : at === 2 ? "quote sent" : "quote draft"}</span>`);
   if (l.stage === "client") c.push(`<span class="chip ok">client</span>`);
   return c.join("");
 }
@@ -313,31 +353,38 @@ function pane(l, at) {
     return `<p class="src">call: ${l.call_at ? when(l.call_at) : "no time set"} · intake answers are on the first tab</p>
     <div class="two">
       <div class="pane"><h4 class="mono" style="font-size:13px;color:var(--accent);font-weight:500">call questions</h4>
-        ${ONBOARD_QS.map((q, i) => `<div class="q"><label for="qa${i}">${esc(q)}</label><textarea id="qa${i}" data-q="${i}" placeholder="Notes from the call">${esc((l.answers || {})[i])}</textarea></div>`).join("")}
+        <p class="note">★ ask first if time runs short · ${ONBOARD.flatMap(g => g.qs).filter(q => ((l.answers || {})[q.id] || "").trim()).length} of ${ONBOARD.flatMap(g => g.qs).length} answered</p>
+        ${ONBOARD.map(g => `<h4 class="grp">${esc(g.h)}</h4>` + g.qs.map(q => `<div class="q"><label for="qa${q.id}">${q.star ? '<span class="star">★</span> ' : ""}${esc(q.q)}</label>${q.note ? `<p class="qnote">${esc(q.note)}</p>` : ""}<textarea id="qa${q.id}" data-q="${q.id}" placeholder="Notes from the call">${esc((l.answers || {})[q.id])}</textarea></div>`).join("")).join("")}
       </div>
       <div class="pane"><h4 class="mono" style="font-size:13px;color:var(--accent);font-weight:500">after the call</h4>
         ${ONBOARD_TASKS.map((t, i) => `<label class="check ${(l.checks || {})[i] ? "donecheck" : ""}"><input type="checkbox" data-c="${i}" ${(l.checks || {})[i] ? "checked" : ""}><span>${esc(t)}</span></label>`).join("")}
-        <a class="btn" href="quote-builder.html" target="_blank" rel="noopener" style="align-self:flex-start;text-decoration:none">Open quote builder ↗</a>
+        <a class="btn" href="quote-builder.html?${document.documentElement.classList.contains("embed") ? "embed=1&" : ""}lead=${l.id}" style="align-self:flex-start;text-decoration:none">Build their quote →</a>
       </div>
     </div>`;
   }
   if (tab === "quote") {
-    if (at < 2) return locked("quote");
+    if (at < 1) return locked("quote");
     const q = l.quote || {};
-    const fee = q.spread ? (+q.setup || 0) * 0.10 : 0;
-    return `<p class="src">enter the totals from the quote builder · saved on this record</p>
+    const qb = "quote-builder.html?" + (document.documentElement.classList.contains("embed") ? "embed=1&" : "") + "lead=" + l.id;
+    if (!q.builder && !q.setup) return `<p class="src">no quote yet</p>
+      <p class="note">The quote builder opens with ${esc(l.business || l.name || "this lead")} filled in, and saves the quote back to this record as you go.</p>
+      <a class="btn solid" href="${qb}" style="align-self:flex-start;text-decoration:none">Build the quote →</a>`;
+    const m = qMoney(q);
+    return `<p class="src">${esc(q.num || "quote")}${q.saved_at ? " · saved " + when(q.saved_at) : ""}</p>
       <div class="two">
         <div class="pane">
-          <div class="q"><label for="qNum">Quote #</label><input type="text" id="qNum" data-qf="num" value="${esc(q.num || "")}" placeholder="Q-2026-001"></div>
-          <div class="q"><label for="qSetup">Setup total (CAD)</label><input type="text" id="qSetup" data-qf="setup" value="${esc(q.setup || "")}" inputmode="decimal"></div>
-          <div class="q"><label for="qPlan">Maintenance plan</label><select id="qPlan" data-qf="plan">${Object.keys(PLANS).map(p => `<option ${q.plan === p ? "selected" : ""}>${p}</option>`).join("")}</select></div>
-          <label class="check"><input type="checkbox" id="qSpread" data-qf="spread" ${q.spread ? "checked" : ""}><span>Spread setup over 12 months (10% plan fee)</span></label>
-        </div>
-        <div class="pane">
+          ${q.project ? `<div class="line"><span>Project</span><span>${esc(q.project)}</span></div>` : ""}
           <div class="line"><span>Setup</span><span>${money(q.setup)}</span></div>
-          ${q.spread ? `<div class="line"><span>Payment plan fee</span><span>${money(fee)}</span></div><div class="line"><span>12 monthly payments</span><span>${money(((+q.setup || 0) + fee) / 12)}</span></div>` : ""}
-          <div class="line"><span>${esc(q.plan || "Plus")} maintenance</span><span>${money(PLANS[q.plan || "Plus"])}/mo</span></div>
-          <div class="line total"><span>${q.spread ? "Monthly, months 1-12" : "Monthly"}</span><span>${money(PLANS[q.plan || "Plus"] + (q.spread ? ((+q.setup || 0) + fee) / 12 : 0))}</span></div>
+          ${q.spread ? `<div class="line"><span>Spread over 12 months (${m.fee}% plan fee)</span><span>${money(m.spread)}/mo</span></div>` : `<div class="line"><span>50% deposit</span><span>${money((+q.setup || 0) / 2)}</span></div>`}
+          <div class="line"><span>${esc(q.plan || "Plus")} maintenance</span><span>${money(m.maint)}/mo</span></div>
+          ${q.tools_monthly ? `<div class="line"><span>Their tools, paid to providers</span><span>about ${money(q.tools_monthly)}/mo</span></div>` : ""}
+          <div class="line total"><span>${q.spread ? "Monthly, months 1-12" : "Monthly"}</span><span>${money(q.monthly || m.maint + m.spread)}</span></div>
+          ${q.spread && q.monthly_after ? `<div class="line"><span>Monthly from month 13</span><span>${money(q.monthly_after)}</span></div>` : ""}
+          ${q.first_year ? `<div class="line"><span>First year, all-in</span><span>${money(q.first_year)}</span></div>` : ""}
+        </div>
+        <div class="pane" style="gap:10px">
+          <a class="btn solid" href="${qb}" style="align-self:flex-start;text-decoration:none">Open in quote builder →</a>
+          <p class="note">Edit it there and it saves here. Download the PDF from the builder to send it.</p>
         </div>
       </div>`;
   }
@@ -349,7 +396,8 @@ function pane(l, at) {
         <div>Client</div><div>${esc(l.name)}, ${esc(l.business)}</div>
         <div>Quote</div><div>${esc(q.num || "not set")}</div>
         <div>Setup payment</div><div>${q.spread ? "Spread over 12 months, 12-month minimum" : "50% deposit, rest on delivery"}</div>
-        <div>Maintenance</div><div>${esc(q.plan || "Plus")} plan, ${money(PLANS[q.plan || "Plus"])}/mo</div>
+        <div>Setup</div><div>${money(q.setup)}${q.spread ? ", " + money(qMoney(q).spread) + "/mo for 12 months" : ""}</div>
+        <div>Maintenance</div><div>${esc(q.plan || "Plus")} plan, ${money(qMoney(q).maint)}/mo</div>
         <div>Status</div><div>${at >= 4 ? "Signed" + (a.signed_at ? " " + when(a.signed_at) : "") : "Sent for signature"}</div>
       </div>`;
   }

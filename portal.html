@@ -316,9 +316,9 @@
     const items = [];
     let mrr = 0, mrrNote = 0, undated = 0;
     for (const l of LEADS.filter(x => x.stage === "client" && x.quote)) {
-      const q = l.quote, plan = PLANS[q.plan || "Plus"] || 0, setup = +q.setup || 0;
+      const q = l.quote, plan = q.maint != null ? +q.maint : PLANS[q.plan || "Plus"] || 0, setup = +q.setup || 0;
       const start = day0(l.agreement?.signed_at || l.updated_at || l.created_at);
-      const spread = q.spread ? setup * 1.10 / 12 : 0;
+      const spread = q.spread ? setup * (1 + (q.planfee != null ? +q.planfee : 10) / 100) / 12 : 0;
       mrr += plan; if (q.spread && addMonths(start, 12) > today) { mrr += spread; mrrNote += spread; }
       for (let n = 0; n < 240; n++) {
         const d = addMonths(start, n); if (d > end) break; if (d < today) continue;
@@ -340,8 +340,8 @@
     $("upcoming").innerHTML = (items.length ? items.map(i => `<div class="row2"><span class="d mono">${fmtD(i.d)}</span><span>${escH(i.name)}</span><span class="mono ${i.kind}">${i.amt > 0 ? "+" : "-"}${cad2(Math.abs(i.amt))}</span></div>`).join("") : '<p class="sub">Nothing yet. Clients show up here once they reach the client stage with a quote, and your expenses once you add them.</p>')
       + (undated ? `<div class="row2"><span class="d mono">on delivery</span><span>Setup balances still owed</span><span class="mono in">+${cad2(undated)}</span></div>` : "");
     const open = LEADS.filter(x => x.stage !== "client" && x.quote);
-    $("pending").innerHTML = open.length ? open.map(l => { const q = l.quote; return `<div class="row2"><span class="d mono">${l.stage}</span><span>${escH(l.business || l.name)}</span><span class="mono sub">${cad(+q.setup || 0)} + ${cad(PLANS[q.plan || "Plus"] || 0)}/mo</span></div>`; }).join("")
-      + `<p class="sub">Up to ${cad(open.reduce((s, l) => s + (PLANS[l.quote.plan || "Plus"] || 0), 0))}/mo more if they all sign.</p>` : '<p class="sub">No open quotes right now.</p>';
+    $("pending").innerHTML = open.length ? open.map(l => { const q = l.quote; return `<div class="row2"><span class="d mono">${l.stage}</span><span>${escH(l.business || l.name)}</span><span class="mono sub">${cad(+q.setup || 0)} + ${cad(q.maint != null ? +q.maint : PLANS[q.plan || "Plus"] || 0)}/mo</span></div>`; }).join("")
+      + `<p class="sub">Up to ${cad(open.reduce((s, l) => s + (l.quote.maint != null ? +l.quote.maint : PLANS[l.quote.plan || "Plus"] || 0), 0))}/mo more if they all sign.</p>` : '<p class="sub">No open quotes right now.</p>';
     $("expList").innerHTML = EXP.length ? EXP.map(x => `<div class="row2"><span class="d mono">${x.every === "once" ? "once" : x.every + "ly"}</span><span>${escH(x.name)} <span class="sub">next ${fmtD(day0(x.next_due + "T00:00"))}</span></span><span class="mono out">${cad2(x.amount)}<button class="x" data-del="${x.id}" title="Remove" aria-label="Remove ${escH(x.name)}">×</button></span></div>`).join("") : '<p class="sub">Add your bills below, like insurance or your domain.</p>';
   }
   $("expForm").addEventListener("submit", async e => {
