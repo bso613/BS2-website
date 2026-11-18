@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intake form · BS²</title>
+<meta name="description" content="Three minutes of questions before your free call with BS2.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c0f14; --surface: #11151c; --surface-2: #171c25; --line: #232a35; --line-2: #3a4352;
+    --text: #e8ecf2; --muted: #a7b0bf; --faint: #8a94a5; --accent: #7ee0c3; --on-accent: #0c0f14; --warn: #f2c66d;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, p { margin: 0; }
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .logo { font-weight: 700; font-size: 24px; text-decoration: none; color: var(--text); }
+  .logo sup { font-size: 14px; color: var(--accent); }
+  nav a.back { color: var(--text); text-decoration: none; font-size: 14px; }
+  main { padding: 56px 0 80px; display: flex; flex-direction: column; gap: 28px; }
+  .kicker { font-size: 14px; color: var(--accent); }
+  h1 { font-size: clamp(34px, 6vw, 48px); letter-spacing: -1.2px; line-height: 1.05; }
+  .lead { color: var(--muted); font-size: 17px; line-height: 1.55; }
+  form { display: flex; flex-direction: column; gap: 22px; }
+  .q { display: flex; flex-direction: column; gap: 8px; }
+  .q > label, .q > .lbl { font-size: 15px; }
+  .req { color: var(--accent); }
+  input[type=text], input[type=email], textarea, select { font: inherit; font-size: 16px; color: var(--text); background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 13px 14px; width: 100%; }
+  textarea { min-height: 96px; resize: vertical; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr; } .wrap { padding: 0 16px; } main { padding: 36px 0 60px; } }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; border: 1px solid var(--line-2); border-radius: 999px; padding: 9px 15px; cursor: pointer; color: var(--muted); background: var(--surface); }
+  .opt:has(input:checked) { border-color: var(--accent); color: var(--text); background: rgba(126, 224, 195, .08); }
+  .opt input { accent-color: var(--accent); margin: 0; }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .btn { font: inherit; font-size: 16px; font-weight: 700; border-radius: 8px; padding: 15px 26px; cursor: pointer; border: 0; background: var(--accent); color: var(--on-accent); align-self: flex-start; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .msg { font-size: 15px; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); }
+  .small { font-size: 13px; color: var(--faint); line-height: 1.5; }
+  .calendly-inline-widget { min-width: 280px; height: 700px; border-radius: 12px; overflow: hidden; }
+  @media (max-width: 600px) { .calendly-inline-widget { height: 1000px; } }
+  footer { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <a class="logo" href="./" aria-label="BS2 home">BS<sup>2</sup></a>
+    <a class="back mono" href="./#book">/home</a>
+  </nav>
+
+  <main>
+    <section id="formView" style="display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p class="kicker mono">&gt; intake_</p>
+        <h1>Tell me about your business.</h1>
+        <p class="lead">About 3 minutes. It helps me come prepared, so our call is spent on solutions. Then you'll pick a time.</p>
+      </div>
+      <form id="intake" novalidate>
+        <div class="two">
+          <div class="q"><label for="name">Your name <span class="req">*</span></label><input type="text" id="name" autocomplete="name" required></div>
+          <div class="q"><label for="email">Email <span class="req">*</span></label><input type="email" id="email" autocomplete="email" required></div>
+        </div>
+        <div class="q"><label for="business">Business name and website or social link</label><input type="text" id="business" placeholder="e.g. Smith Flooring, instagram.com/smithflooring"></div>
+        <div id="fields" style="display:flex;flex-direction:column;gap:22px"></div>
+        <div class="trap" aria-hidden="true"><label for="website">Leave this empty</label><input type="text" id="website" tabindex="-1" autocomplete="off"></div>
+        <p class="msg" id="err" role="alert" hidden></p>
+        <button class="btn" id="send" type="submit">Send and pick a time →</button>
+        <p class="small">Your answers go only to Ben. See the <a href="privacy.html">privacy policy</a>.</p>
+      </form>
+    </section>
+
+    <section id="doneView" hidden style="display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <p class="kicker mono">&gt; got_it_</p>
+        <h1>Thanks! Now pick a time.</h1>
+        <p class="lead">I'll read your answers before we talk. Already booked? You're all set, I'll see you then.</p>
+      </div>
+      <div id="cal"></div>
+    </section>
+  </main>
+
+  <footer class="mono">
+    <span>© 2026 BS2</span>
+    <span>ottawa, on · <a href="privacy.html">privacy</a></span>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
+const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx"; // public by design
+const CALENDLY = "https://calendly.com/ben-a-smith-613/30min?hide_gdpr_banner=1&background_color=11151c&text_color=e8ecf2&primary_color=7ee0c3";
+
+// Keep these labels in sync with INTAKE in pipeline.html.
+const QS = [
+  { k: "What does your business do, in one line?", t: "text" },
+  { k: "Industry", t: "select", o: ["Restaurant / hospitality", "Retail", "Trades / construction", "Health & wellness", "Professional services", "Other"] },
+  { k: "Team size", t: "one", o: ["Just me", "2–5", "6–20", "20+"] },
+  { k: "What can I help with?", t: "many", o: ["New website", "Bookings / scheduling", "Quotes, invoicing & payments", "CRM / sales pipeline", "Data & dashboards", "AI / automation", "Not sure yet"], req: true },
+  { k: "What's the biggest time-waster in your week right now?", t: "area", req: true },
+  { k: "What tools do you use today?", t: "many", o: ["Google Workspace", "Microsoft 365", "Square / Shopify / Clover", "QuickBooks / Wave", "Spreadsheets", "Pen and paper", "Other"] },
+  { k: "What's your yearly budget for tech, including setup and ongoing support? (CAD)", t: "one", o: ["Under $2k", "$2k–5k", "$5k–10k", "$10k+", "Not sure yet"] },
+  { k: "Timeline", t: "one", o: ["ASAP", "1–3 months", "Just exploring"] },
+  { k: "Preferred language for our call", t: "one", o: ["English", "Français", "Español"] },
+  { k: "Anything else I should know before we talk?", t: "area" },
+];
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+$("fields").innerHTML = QS.map((f, i) => {
+  const id = "f" + i, star = f.req ? ' <span class="req">*</span>' : "";
+  if (f.t === "text") return `<div class="q"><label for="${id}">${esc(f.k)}${star}</label><input type="text" id="${id}"></div>`;
+  if (f.t === "area") return `<div class="q"><label for="${id}">${esc(f.k)}${star}</label><textarea id="${id}"></textarea></div>`;
+  if (f.t === "select") return `<div class="q"><label for="${id}">${esc(f.k)}${star}</label><select id="${id}"><option value="">Select your industry</option>${f.o.map(x => `<option>${esc(x)}</option>`).join("")}</select></div>`;
+  const type = f.t === "many" ? "checkbox" : "radio";
+  return `<fieldset class="q" id="${id}" style="border:0;padding:0;margin:0"><legend class="lbl" style="padding:0;margin-bottom:8px">${esc(f.k)}${star}${f.t === "many" ? ' <span class="small">pick any</span>' : ""}</legend><div class="opts">${f.o.map(x => `<label class="opt"><input type="${type}" name="${id}" value="${esc(x)}">${esc(x)}</label>`).join("")}</div></fieldset>`;
+}).join("");
+
+function value(f, i) {
+  const el = $("f" + i);
+  if (f.t === "many" || f.t === "one") return [...el.querySelectorAll("input:checked")].map(x => x.value).join(", ");
+  return el.value.trim();
+}
+function fail(t, focusId) { $("err").textContent = t; $("err").hidden = false; if (focusId) $(focusId).scrollIntoView({ behavior: "smooth", block: "center" }); }
+
+$("intake").addEventListener("submit", async e => {
+  e.preventDefault(); $("err").hidden = true;
+  const name = $("name").value.trim(), email = $("email").value.trim();
+  if (!name) return fail("Please add your name.", "name");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("Please add a valid email.", "email");
+  const intake = {};
+  for (let i = 0; i < QS.length; i++) {
+    const v = value(QS[i], i);
+    if (QS[i].req && !v) return fail("Please answer: " + QS[i].k, "f" + i);
+    if (v) intake[QS[i].k] = v;
+  }
+  if (!window.supabase) return fail("The form couldn't connect. Please refresh, or email ben.a.smith.613@gmail.com.");
+  $("send").disabled = true; $("send").textContent = "Sending…";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+  const { error } = await sb.rpc("submit_intake", { p: { name, email, business: $("business").value.trim(), website: $("website").value, intake } });
+  if (error) { $("send").disabled = false; $("send").textContent = "Send and pick a time →"; return fail(error.message.length < 120 ? error.message : "Something went wrong. Please try again."); }
+  // Show the booking calendar, already filled in with their name and email so the booking matches this record.
+  const url = CALENDLY + "&name=" + encodeURIComponent(name) + "&email=" + encodeURIComponent(email);
+  $("cal").innerHTML = `<div class="calendly-inline-widget" data-url="${esc(url)}"></div>`;
+  const s = document.createElement("script"); s.src = "https://assets.calendly.com/assets/external/widget.js"; s.async = true; document.body.appendChild(s);
+  $("formView").hidden = true; $("doneView").hidden = false; scrollTo({ top: 0 });
+});
+</script>
+</body>
+</html>

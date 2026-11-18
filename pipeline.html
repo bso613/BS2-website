@@ -123,7 +123,7 @@
     <p class="logo">BS<sup>2</sup><span>pipeline()</span></p>
     <div class="row">
       <span class="note mono" id="who"></span>
-      <button class="btn" id="copyIntake" type="button" hidden title="Copy your Tally intake form link to send to someone">Copy intake form link</button>
+      <button class="btn" id="copyIntake" type="button" hidden title="Copy your intake form link to send to someone">Copy intake form link</button>
       <button class="btn solid" id="addBtn" type="button" hidden>+ Add lead</button>
       <a class="btn" href="portal.html">/portal</a>
     </div>
@@ -175,7 +175,7 @@ const ONBOARD_QS = [
   "What would make this a win in 3 months?",
 ];
 const ONBOARD_TASKS = ["Send the call summary email", "Get access to their current tools", "Confirm budget and timeline", "Build the quote in the quote builder"];
-// Same questions and labels as the Tally intake form, so manual and Tally leads match.
+// Same questions and labels as intake.html (and the old Tally form), so every lead matches.
 const INTAKE = [
   { k: "What does your business do, in one line?", t: "text" },
   { k: "Industry", t: "one", o: ["Restaurant / hospitality", "Retail", "Trades / construction", "Health & wellness", "Professional services", "Other"] },
@@ -263,7 +263,7 @@ async function load() {
 
 function chips(l) {
   const at = idx(l.stage), c = [];
-  c.push(`<span class="chip ${l.source === "tally" ? "ok" : ""}">${l.source === "tally" ? "intake ✓" : "added by you"}</span>`);
+  c.push(`<span class="chip ${l.source === "manual" ? "" : "ok"}">${l.source === "manual" ? "added by you" : "intake ✓"}</span>`);
   if (l.call_at) c.push(`<span class="chip ${at > 1 ? "ok" : "wait"}">${at > 1 ? "call ✓" : "call " + when(l.call_at)}</span>`);
   if (l.quote) c.push(`<span class="chip ${at >= 3 ? "ok" : "wait"}">${at >= 3 ? "quote ✓" : "quote sent"}</span>`);
   if (l.stage === "client") c.push(`<span class="chip ok">client</span>`);
@@ -304,7 +304,7 @@ function pane(l, at) {
   const locked = t => `<p class="empty">This opens at the <b>${STAGES[TABS.find(x => x.id === t).from].name}</b> stage. Everything from earlier stages carries over.</p>`;
   if (tab === "intake") {
     const rows = [["Name", l.name], ["Email", l.email], ["Business", l.business], ...Object.entries(l.intake || {})];
-    return `<p class="src">${l.source === "tally" ? "from tally intake form" : "added by you"} · ${when(l.created_at)}</p>
+    return `<p class="src">${l.source === "web" ? "from your intake form" : l.source === "tally" ? "from tally intake form" : "added by you"} · ${when(l.created_at)}</p>
       <div class="kv">${rows.map(([k, v]) => `<div>${esc(k)}</div><div>${esc(v)}</div>`).join("")}</div>
       <button class="btn" id="editIntake" type="button" style="align-self:flex-start">${Object.keys(l.intake || {}).length > 1 ? "Edit answers" : "Fill in intake answers"}</button>`;
   }
@@ -381,7 +381,7 @@ document.addEventListener("click", async e => {
   const l = lead();
   const id = e.target.id;
   if (id === "addBtn") { openLeadForm(null); return; }
-  if (id === "copyIntake") { try { await navigator.clipboard.writeText("https://tally.so/r/5X9ZLE"); toast("Copied tally.so/r/5X9ZLE. Answers land here automatically."); } catch { toast("Your intake form link is tally.so/r/5X9ZLE"); } return; }
+  if (id === "copyIntake") { const link = new URL("intake.html", location.href).href; try { await navigator.clipboard.writeText(link); toast("Copied " + link + ". Answers land here automatically."); } catch { toast("Your intake form link is " + link); } return; }
   if (id === "editIntake") { openLeadForm(lead()); return; }
   if (id === "cancelAdd") { editing = null; $("addForm").hidden = true; return; }
   if (!l) return;
