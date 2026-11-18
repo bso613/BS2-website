@@ -104,9 +104,13 @@
   .toast { font-size: 13px; color: var(--accent); min-height: 1.2em; }
   .note { font-size: 13px; color: var(--faint); line-height: 1.5; }
   [hidden] { display: none !important; }
+  .embed .page { padding: 16px 0 24px; max-width: none; }
+  .embed .top { border-bottom: 0; padding-bottom: 0; }
+  .embed .logo, .embed #who, .embed .top a.btn { display: none; }
 </style>
 </head>
 <body>
+<script>if (/[?&]embed\b/.test(location.search)) document.documentElement.classList.add("embed");</script>
 <div class="page">
   <div class="top">
     <p class="logo">BS<sup>2</sup><span>pipeline()</span></p>
@@ -255,7 +259,7 @@ function pane(l, at) {
       </div>
       <div class="pane"><h4 class="mono" style="font-size:13px;color:var(--accent);font-weight:500">after the call</h4>
         ${ONBOARD_TASKS.map((t, i) => `<label class="check ${(l.checks || {})[i] ? "donecheck" : ""}"><input type="checkbox" data-c="${i}" ${(l.checks || {})[i] ? "checked" : ""}><span>${esc(t)}</span></label>`).join("")}
-        <a class="btn" href="https://claude.ai/artifact/BEoqhJCiVvuHNxZvaU5CCV" target="_blank" rel="noopener" style="align-self:flex-start;text-decoration:none">Open quote builder ↗</a>
+        <a class="btn" href="quote-builder.html" target="_blank" rel="noopener" style="align-self:flex-start;text-decoration:none">Open quote builder ↗</a>
       </div>
     </div>`;
   }
@@ -386,7 +390,7 @@ $("addForm").addEventListener("submit", async e => {
 (async () => {
   const { data } = await sb.auth.getSession();
   const s = data.session;
-  if (!s) { $("gate").innerHTML = 'Sign in first on the <a href="portal.html">client portal</a>, then come back to this page.'; return; }
+  if (!s) { $("gate").innerHTML = 'Sign in first on the <a href="portal.html" target="_top">client portal</a>, then come back to this page.'; return; }
   const { data: ok } = await sb.rpc("is_admin");
   if (!ok) { $("gate").textContent = "This page is for BS2 only."; return; }
   $("who").textContent = s.user.email; $("addBtn").hidden = false;
