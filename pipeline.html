@@ -298,12 +298,11 @@ function pane(l, at) {
     if (at < 4) return locked("portal");
     return `<div class="portal">
       <h4>give them portal access</h4>
-      <p>Their record is already linked to <span class="mono">${esc(l.email)}</span>. One step left: send the invite.</p>
+      <p>Their record is already linked to <span class="mono">${esc(l.email)}</span>.${(EVENTS[l.id] || []).some(e => /^Portal invite sent/.test(e.text)) ? " Invite already sent. Send again if they lost it." : " One click left."}</p>
       <div class="row">
-        <button class="btn solid" id="copyEmail" type="button">1. Copy their email</button>
-        <a class="btn" href="https://supabase.com/dashboard/project/wwznpjdpbewyhswotuht/auth/users" target="_blank" rel="noopener" style="text-decoration:none">2. Open Supabase users ↗</a>
+        <button class="btn solid" id="sendInvite" type="button">Send portal invite</button>
       </div>
-      <p class="note">In Supabase, click Add user, then Send invitation, paste the email and click Invite user. They choose a password or use Google, and land in the portal.</p>
+      <p class="note">They get an email from Supabase, choose a password or use Google, and land in the portal.</p>
     </div>`;
   }
   return "";
@@ -351,8 +350,14 @@ document.addEventListener("click", async e => {
     const v = $("newmsg").value.trim(); if (!v) return;
     await logEvent(l, "Ben", v); renderRecord();
   }
-  if (id === "copyEmail") {
-    try { await navigator.clipboard.writeText(l.email); toast("Copied " + l.email); } catch { toast("Copy didn't work. The email is " + l.email, true); }
+  if (id === "sendInvite") {
+    const b = e.target; b.disabled = true; b.textContent = "Sending…";
+    const { data, error } = await sb.functions.invoke("invite-client", { body: { lead_id: l.id, redirect_to: new URL("portal.html", location.href).href } });
+    let msg = data?.error;
+    if (error && !msg) { try { msg = (await error.context.json()).error; } catch { msg = /Failed to send|fetch/i.test(error.message) ? "The invite function isn't set up yet in Supabase." : error.message; } }
+    if (msg) { b.disabled = false; b.textContent = "Send portal invite"; toast(msg, true); return; }
+    (EVENTS[l.id] ||= []).push({ who: "Ben", text: "Portal invite sent to " + data.email + ".", created_at: new Date().toISOString() });
+    renderRecord(); toast("Invite sent to " + data.email + ".");
   }
 });
 document.addEventListener("input", e => {
