@@ -153,6 +153,7 @@
           <h1 style="margin-top:12px">Welcome back.</h1>
           <p class="who mono" id="who"></p>
         </div>
+        <a class="btn" id="pipeLink" href="pipeline.html" hidden style="border-color:var(--line, #2a3240);color:inherit">Open my pipeline →</a>
       </div>
       <div class="tiles">
         <div class="tile"><p class="tag mono">quotes</p><p>Review and accept your project quotes.</p><p class="empty mono">coming soon</p></div>
@@ -237,7 +238,8 @@
 
     const render = session => {
       if (session && needsPassword) show("setpw");
-      else if (session) { $("who").textContent = session.user.email; showTools(session.user.email); show("dash"); }
+      else if (session) { $("who").textContent = session.user.email; showTools(session.user.email); show("dash");
+        sb.rpc("is_admin").then(({ data }) => { $("pipeLink").hidden = data !== true; }); }
       else show("signin");
     };
     sb.auth.getSession().then(({ data, error }) => {
