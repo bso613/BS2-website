@@ -123,7 +123,8 @@
     <p class="logo">BS<sup>2</sup><span>pipeline()</span></p>
     <div class="row">
       <span class="note mono" id="who"></span>
-      <button class="btn" id="addBtn" type="button" hidden>+ Add lead</button>
+      <button class="btn" id="copyIntake" type="button" hidden title="Copy your Tally intake form link to send to someone">Copy intake form link</button>
+      <button class="btn solid" id="addBtn" type="button" hidden>+ Add lead</button>
       <a class="btn" href="portal.html">/portal</a>
     </div>
   </div>
@@ -380,6 +381,7 @@ document.addEventListener("click", async e => {
   const l = lead();
   const id = e.target.id;
   if (id === "addBtn") { openLeadForm(null); return; }
+  if (id === "copyIntake") { try { await navigator.clipboard.writeText("https://tally.so/r/5X9ZLE"); toast("Copied tally.so/r/5X9ZLE. Answers land here automatically."); } catch { toast("Your intake form link is tally.so/r/5X9ZLE"); } return; }
   if (id === "editIntake") { openLeadForm(lead()); return; }
   if (id === "cancelAdd") { editing = null; $("addForm").hidden = true; return; }
   if (!l) return;
@@ -459,7 +461,7 @@ $("addForm").addEventListener("submit", async e => {
   if (!s) { $("gate").innerHTML = 'Sign in first on the <a href="portal.html" target="_top">client portal</a>, then come back to this page.'; return; }
   const { data: ok } = await sb.rpc("is_admin");
   if (!ok) { $("gate").textContent = "This page is for BS2 only."; return; }
-  $("who").textContent = s.user.email; $("addBtn").hidden = false;
+  $("who").textContent = s.user.email; $("addBtn").hidden = false; $("copyIntake").hidden = false;
   load();
 })();
 </script>
