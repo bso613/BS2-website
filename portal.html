@@ -288,10 +288,25 @@
     document.querySelectorAll(".apane").forEach(p => {
       p.hidden = p.id !== id;
       const f = p.querySelector("iframe[data-src]");
-      if (!p.hidden && f && !f.src) f.src = f.dataset.src;
+      if (p.hidden || !f) return;
+      if (!f.src) { f.src = f.dataset.src; return; }
+      // If this tab's frame wandered to another page (e.g. pipeline -> quote builder), bring it home.
+      let here = ""; try { here = f.contentWindow.location.pathname.split("/").pop(); } catch (e) {}
+      const home = f.dataset.src.split("?")[0];
+      if (here !== home) f.src = goto && goto.pane === id && goto.src ? goto.src : f.dataset.src;
+      goto = null;
     });
   }
+  let goto = null;
   document.querySelectorAll(".atab").forEach(t => t.addEventListener("click", () => openPane(t.dataset.pane)));
+  // The quote builder tab asks to jump back to a lead in the pipeline tab.
+  addEventListener("message", e => {
+    if (e.origin !== location.origin || !e.data || e.data.bs2 !== "pipeline") return;
+    const f = document.querySelector("#pPipe iframe");
+    const src = "pipeline.html?embed=1" + (e.data.lead ? "&lead=" + encodeURIComponent(e.data.lead) : "");
+    if (f) f.src = src;
+    openPane("pPipe");
+  });
 
   // Money: revenue from pipeline clients, expenses from your expenses list.
   const PLANS = { Care: 100, Plus: 200, Pro: 300 };

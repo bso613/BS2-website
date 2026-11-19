@@ -94,7 +94,8 @@
   .leadbar select { max-width: 380px; }
   .leadbar .st { font-family: var(--mono); font-size: 12px; color: var(--faint); }
   .leadbar .st.ok { color: var(--accent); }
-  .leadbar a { color: var(--accent); font-size: 14px; }
+  .leadbar a.btn { color: var(--text); white-space: nowrap; }
+  .sendst .btn { margin-top: 10px; display: inline-block; text-decoration: none; }
   .btn:disabled { opacity: .45; cursor: default; }
   .compose { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
   .compose textarea { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 10px; width: 100%; resize: vertical; line-height: 1.5; }
@@ -113,7 +114,7 @@
   <div class="leadbar" id="leadbar" hidden>
     <label>Quote for <select id="leadPick"><option value="">Pick a lead from your pipeline</option></select></label>
     <span class="st" id="leadSt"></span>
-    <a id="backPipe" href="pipeline.html" hidden>← Back to pipeline</a>
+    <a id="backPipe" class="btn" href="pipeline.html" hidden style="text-decoration:none">← Back to pipeline</a>
   </div>
 
   <div class="grid">
@@ -488,7 +489,15 @@ async function sendQuote() {
   const { data: fresh } = await SB.from("leads").select("*").eq("id", LEAD.id).single();
   if (fresh) { Object.assign(LEAD, fresh); }
   $("compose").hidden = true; showSendState(); toast("Sent to " + data.email + ". They're at the quote stage now.");
+  $("sendSt").insertAdjacentHTML("beforeend", `<br><a class="btn solid" href="${$("backPipe").href}" data-back="1">Done: back to the pipeline →</a>`);
 }
+// Way back to the pipeline. In the portal's quote builder tab, switch the portal to its pipeline tab instead.
+const inPortalTab = (() => { try { return !!(window.frameElement && window.frameElement.closest("#pQuote")); } catch (e) { return false; } })();
+document.addEventListener("click", e => {
+  const a = e.target.closest("#backPipe, [data-back]");
+  if (!a || !inPortalTab) return;
+  e.preventDefault(); parent.postMessage({ bs2: "pipeline", lead: LEAD ? LEAD.id : "" }, location.origin);
+});
 $("emailBtn").onclick = openCompose;
 $("cCancel").onclick = () => { $("compose").hidden = true; };
 $("cSend").onclick = sendQuote;
@@ -496,7 +505,7 @@ function pickLead(id) {
   clearTimeout(leadTimer);
   LEAD = LEADS.find(l => l.id === id) || null;
   $("leadPick").value = LEAD ? LEAD.id : "";
-  $("backPipe").hidden = !LEAD; if (LEAD) $("backPipe").href = "pipeline.html?" + (embed ? "embed=1&" : "") + "lead=" + LEAD.id;
+  $("backPipe").hidden = !LEAD && !embed && !inPortalTab; $("backPipe").href = "pipeline.html" + (embed ? "?embed=1" : ""); if (LEAD) $("backPipe").href = "pipeline.html?" + (embed ? "embed=1&" : "") + "lead=" + LEAD.id;
   $("compose").hidden = true; showSendState();
   if (!LEAD) { $("leadSt").className = "st"; $("leadSt").textContent = "not linked: this quote only stays in this browser"; return; }
   fillFromLead(LEAD, false); renderTools(); renderWork();
