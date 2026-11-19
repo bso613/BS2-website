@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your quote · BS²</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0c0f14; --surface: #11151c; --surface-2: #171c25; --line: #232a35; --line-2: #3a4352;
+    --text: #e8ecf2; --muted: #a7b0bf; --faint: #8a94a5; --accent: #7ee0c3; --on-accent: #0c0f14; --warn: #f2c66d;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .wrap { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3, p { margin: 0; }
+  nav { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; border-bottom: 1px solid var(--line); }
+  .logo { font-weight: 700; font-size: 24px; text-decoration: none; color: var(--text); }
+  .logo sup { font-size: 14px; color: var(--accent); }
+  main { padding: 48px 0 80px; display: flex; flex-direction: column; gap: 28px; }
+  .kicker { font-size: 14px; color: var(--accent); }
+  h1 { font-size: clamp(32px, 6vw, 46px); letter-spacing: -1.2px; line-height: 1.05; }
+  .meta { color: var(--faint); font-size: 13px; line-height: 1.7; }
+  .big { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .big div { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .big small { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--faint); }
+  .big strong { font-size: 26px; letter-spacing: -.5px; }
+  .sec { display: flex; flex-direction: column; gap: 2px; }
+  .sec h2 { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--accent); margin-bottom: 8px; }
+  .sec .note { font-size: 13px; color: var(--faint); line-height: 1.5; margin: 0 0 8px; }
+  .line { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 15px; }
+  .line span:last-child { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+  .line.total { border-bottom: 0; border-top: 1px solid var(--line-2); font-weight: 700; }
+  .accept { background: var(--surface); border: 1px solid var(--accent); border-radius: 14px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .accept h2 { font-size: 22px; }
+  .accept p { color: var(--muted); line-height: 1.55; font-size: 15px; }
+  .accept .row { display: flex; flex-wrap: wrap; gap: 10px; }
+  input { font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 13px 14px; flex: 1; min-width: 220px; }
+  .btn { font: inherit; font-size: 16px; font-weight: 700; border-radius: 8px; padding: 13px 22px; cursor: pointer; border: 0; background: var(--accent); color: var(--on-accent); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .msg { font-size: 15px; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); }
+  .empty { color: var(--muted); font-size: 17px; line-height: 1.6; }
+  footer { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+  footer a { color: inherit; }
+  @media (max-width: 600px) { .wrap { padding: 0 16px; } main { padding: 32px 0 60px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a class="logo" href="./" aria-label="BS2 home">BS<sup>2</sup></a><span class="mono meta">ben smith business solutions</span></nav>
+  <main id="main"><p class="empty">Loading your quote…</p></main>
+  <footer class="mono"><span>© 2026 BS2</span><span>ottawa, on · <a href="privacy.html">privacy</a></span></footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
+const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx"; // public by design
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const t = new URLSearchParams(location.search).get("t") || "";
+const main = $("main");
+const fail = text => { main.innerHTML = `<p class="empty">${text}</p>`; };
+const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+
+(async () => {
+  if (!window.supabase) return fail("This page couldn't load. Please refresh, or reply to the quote email.");
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
+  const { data, error } = await sb.rpc("get_quote", { t });
+  if (error || !data) return fail("This quote link isn't valid anymore. Reply to the email and Ben will send a fresh one.");
+  const q = data.quote || {};
+  const expired = q.valid_until && q.valid_until < new Date().toLocaleDateString("en-CA");
+  main.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <p class="kicker mono">&gt; your_quote_</p>
+      <h1>Quote for ${esc(q.client || data.business || data.name)}</h1>
+      <p class="meta mono">${esc(q.num)}${q.project ? " · " + esc(q.project) : ""}<br>sent ${esc(longDate(q.date + "T12:00"))} · valid until ${esc(q.valid_until_label || q.valid_until)}</p>
+    </div>
+    <div class="big">${(q.big || []).map(b => `<div><small>${esc(b.label)}</small><strong>${esc(b.value)}</strong></div>`).join("")}</div>
+    ${(q.sections || []).map(s => `<section class="sec"><h2>${esc(s.title)}</h2>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
+      ${(s.lines || []).map(l => `<div class="line ${l.total ? "total" : ""}"><span>${esc(l.label)}</span><span>${esc(l.value)}</span></div>`).join("")}</section>`).join("")}
+    <section class="accept" id="acceptBox"></section>`;
+  const box = $("acceptBox");
+  const done = (who, when) => { box.innerHTML = `<h2>Accepted ✓</h2><p>Accepted by ${esc(who)}${when ? " on " + esc(longDate(when)) : ""}. Ben will send your service agreement next. Thank you!</p>`; };
+  if (data.accepted_at) return done(data.accepted_by, data.accepted_at);
+  if (expired) { box.innerHTML = `<h2>This quote has expired</h2><p>Reply to the quote email and Ben will send a fresh one.</p>`; return; }
+  box.innerHTML = `<h2>Ready to go?</h2>
+    <p>Type your full name and click accept. Ben sees it right away and sends the service agreement with the full terms next. Nothing is charged today.</p>
+    <div class="row"><input id="signer" autocomplete="name" placeholder="Your full name" aria-label="Your full name"><button class="btn" id="acceptBtn" type="button">Accept quote</button></div>
+    <p class="msg" id="err" role="alert" hidden></p>
+    <p style="font-size:13px;color:var(--faint)">Questions or changes? Just reply to the quote email.</p>`;
+  $("acceptBtn").onclick = async () => {
+    const name = $("signer").value.trim();
+    if (!name) { $("err").textContent = "Please type your name first."; $("err").hidden = false; return; }
+    $("acceptBtn").disabled = true; $("acceptBtn").textContent = "Accepting…";
+    const r = await sb.rpc("accept_quote", { t, signer: name });
+    if (r.error) { $("acceptBtn").disabled = false; $("acceptBtn").textContent = "Accept quote"; $("err").textContent = r.error.message; $("err").hidden = false; return; }
+    done(name, new Date());
+  };
+})();
+</script>
+</body>
+</html>

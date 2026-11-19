@@ -324,7 +324,7 @@ function renderRecord() {
   if (!l) { rec.hidden = true; return; }
   rec.hidden = false;
   const at = idx(l.stage), next = STAGES[at + 1];
-  const nextLabel = { call: "Log the 30-min call", quote: "Send quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
+  const nextLabel = { call: "Log the 30-min call", quote: "Email quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
   rec.innerHTML = `
     <div class="rhead">
       <div><h2>${esc(l.name || "No name")}</h2><p>${esc(l.business || "")} · <span class="mono">${esc(l.email || "")}</span></p></div>
@@ -370,7 +370,11 @@ function pane(l, at) {
       <p class="note">The quote builder opens with ${esc(l.business || l.name || "this lead")} filled in, and saves the quote back to this record as you go.</p>
       <a class="btn solid" href="${qb}" style="align-self:flex-start;text-decoration:none">Build the quote →</a>`;
     const m = qMoney(q);
+    const st = [q.sent_at ? "✓ emailed to " + esc(q.sent_to || l.email) + " " + when(q.sent_at) : "not sent yet",
+      q.viewed_at ? "✓ opened " + when(q.viewed_at) : q.sent_at ? "not opened yet" : "",
+      q.accepted_at ? "✓ accepted by " + esc(q.accepted_by) + " " + when(q.accepted_at) : ""].filter(Boolean).join(" · ");
     return `<p class="src">${esc(q.num || "quote")}${q.saved_at ? " · saved " + when(q.saved_at) : ""}</p>
+      <p class="note mono" style="color:${q.accepted_at ? "var(--accent)" : "var(--muted)"}">${st}</p>
       <div class="two">
         <div class="pane">
           ${q.project ? `<div class="line"><span>Project</span><span>${esc(q.project)}</span></div>` : ""}
@@ -383,8 +387,9 @@ function pane(l, at) {
           ${q.first_year ? `<div class="line"><span>First year, all-in</span><span>${money(q.first_year)}</span></div>` : ""}
         </div>
         <div class="pane" style="gap:10px">
-          <a class="btn solid" href="${qb}" style="align-self:flex-start;text-decoration:none">Open in quote builder →</a>
-          <p class="note">Edit it there and it saves here. Download the PDF from the builder to send it.</p>
+          ${q.accepted_at ? "" : `<a class="btn solid" href="${qb}&send=1" style="align-self:flex-start;text-decoration:none">${q.sent_at ? "Email updated quote →" : "Email quote to " + esc(l.name ? l.name.split(" ")[0] : "client") + " →"}</a>`}
+          <a class="btn" href="${qb}" style="align-self:flex-start;text-decoration:none">Open in quote builder</a>
+          <p class="note">They get an email with a link to view and accept it online. Accepting moves them to agreement here automatically.</p>
         </div>
       </div>`;
   }
@@ -436,6 +441,7 @@ document.addEventListener("click", async e => {
   if (id === "advance") {
     const next = STAGES[idx(l.stage) + 1];
     if (next.id === "call") { $("callPick").hidden = false; $("callAt").focus(); return; }
+    if (next.id === "quote") { location.href = "quote-builder.html?" + (document.documentElement.classList.contains("embed") ? "embed=1&" : "") + "lead=" + l.id + "&send=1"; return; }
     const upd = { stage: next.id };
     if (next.id === "client") upd.agreement = { ...(l.agreement || {}), signed_at: new Date().toISOString() };
     await save(l, upd);

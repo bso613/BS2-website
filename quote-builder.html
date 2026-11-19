@@ -95,16 +95,11 @@
   .leadbar .st { font-family: var(--mono); font-size: 12px; color: var(--faint); }
   .leadbar .st.ok { color: var(--accent); }
   .leadbar a { color: var(--accent); font-size: 14px; }
-  @media print {
-    @page { margin: 14mm; }
-    :root { --bg: #fff; --surface: #fff; --surface-2: #fff; --line: #d9dde3; --line-2: #c4c9d1; --text: #111; --muted: #333; --faint: #555; --accent: #0b7a5c; }
-    body { background: #fff !important; color: #111; }
-    .top, .leadbar, .grid > .col:first-child, .quote .row, .toast, #toast { display: none !important; }
-    .page { padding: 0 !important; max-width: none; }
-    .grid { display: block !important; }
-    .quote { position: static !important; border: 0 !important; padding: 0 !important; }
-    .big > div { border: 1px solid #d9dde3; }
-  }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .compose { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .compose textarea { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 6px; padding: 10px; width: 100%; resize: vertical; line-height: 1.5; }
+  .sendst { font-family: var(--mono); font-size: 12px; color: var(--accent); line-height: 1.6; }
+  .sendst .warn { color: var(--warn); }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 </head>
@@ -214,8 +209,16 @@
         </div>
 
         <div class="row">
-          <button class="btn solid" id="pdf" type="button">Download PDF</button>
+          <button class="btn solid" id="emailBtn" type="button" disabled title="Pick a lead at the top first">Email to client</button>
           <button class="btn" id="reset" type="button">Start over</button>
+        </div>
+        <p class="sendst" id="sendSt" hidden></p>
+        <div class="compose" id="compose" hidden>
+          <p class="hint">To <b id="cTo"></b> · you get a copy · replies come to your inbox</p>
+          <label class="f">Subject<input type="text" id="cSubj"></label>
+          <label class="f">Message<textarea id="cMsg" rows="8"></textarea></label>
+          <p class="hint">Below your message they get the totals and a <b>View and accept your quote</b> button. Accepting moves them to the agreement stage in your pipeline.</p>
+          <div class="row"><button class="btn solid" id="cSend" type="button">Send quote</button><button class="btn" id="cCancel" type="button">Cancel</button></div>
         </div>
         <p class="toast" id="toast" role="status"></p>
       </section>
@@ -366,7 +369,7 @@ function toast(msg) { $("toast").textContent = msg; setTimeout(() => { if ($("to
 
 document.addEventListener("input", e => {
   const el = e.target;
-  if (el.id === "leadPick") return;
+  if (el.id === "leadPick" || el.closest("#compose")) return;
   if (el.id === "mplan" && PLANS[el.value].price !== null) $("maint").value = PLANS[el.value].price;
   if (el.id === "maint") { const match = Object.keys(PLANS).find(k => PLANS[k].price === parseFloat(el.value)); $("mplan").value = match || "custom"; }
   if (el.dataset.i !== undefined) {
@@ -390,10 +393,6 @@ $("addWork").onclick = () => { state.work.push({ name: "New work item", hrs: 3 }
 $("reset").onclick = () => {
   if (LEAD) { state = fresh(); fieldIds.forEach(id => { const d = $(id).defaultValue; if (d !== undefined && $(id).tagName === "INPUT") $(id).value = d; }); $("mplan").value = "plus"; $("maint").value = 200; $("pay").value = "upfront"; $("hst").value = "0"; fillFromLead(LEAD, true); renderTools(); renderWork(); render(); return; }
   state = fresh(); try { localStorage.removeItem("bs2-quote-v2"); } catch (e) {} location.reload();
-};
-$("pdf").onclick = () => {
-  const t = document.title; document.title = ($("qnum").value || "Quote") + " " + ($("client").value || "");
-  window.print(); document.title = t;
 };
 
 const saved = load();
@@ -439,19 +438,73 @@ async function saveLead() {
     builder: { tools: state.tools, work: state.work, fields }, saved_at: new Date().toISOString() };
   const { error } = await SB.from("leads").update({ quote, updated_at: new Date().toISOString() }).eq("id", LEAD.id);
   if (error) { $("leadSt").className = "st"; $("leadSt").textContent = "couldn't save: " + error.message; return; }
-  LEAD.quote = quote;
+  LEAD.quote = quote; showSendState();
   $("leadSt").className = "st ok"; $("leadSt").textContent = "✓ saved to " + (LEAD.name || "their") + "'s pipeline record";
 }
+function snapshot() {
+  const txt = el => el.textContent.replace(/\s+/g, " ").trim();
+  const until = new Date(Date.now() + num("valid") * 864e5);
+  return {
+    num: $("qnum").value, client: $("client").value, project: $("project").value,
+    date: new Date().toISOString().slice(0, 10), valid_until: until.toLocaleDateString("en-CA"),
+    valid_until_label: until.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }),
+    big: [...document.querySelectorAll(".big > div")].filter(d => !d.hidden).map(d => ({ label: txt(d.querySelector("small")), value: txt(d.querySelector("strong")) })),
+    sections: [...document.querySelectorAll(".quote .qsec")].map(sec => ({
+      title: txt(sec.querySelector("h4")), note: sec.querySelector(".sub") ? txt(sec.querySelector(".sub")) : "",
+      lines: [...sec.querySelectorAll(".line")].map(l => { const sp = l.children; return { label: txt(sp[0]), value: sp.length > 1 ? txt(sp[sp.length - 1]) : "", total: l.classList.contains("total") }; }),
+    })),
+  };
+}
+function showSendState() {
+  const q = LEAD && LEAD.quote || {};
+  $("emailBtn").disabled = !LEAD || !LEAD.email || !!q.accepted_at;
+  $("emailBtn").title = !LEAD ? "Pick a lead at the top first" : !LEAD.email ? "This lead has no email yet" : "";
+  $("emailBtn").textContent = q.sent_at ? "Email updated quote" : "Email to client";
+  const d = x => new Date(x).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const st = [];
+  if (q.sent_at) st.push("✓ emailed to " + esc(q.sent_to || LEAD.email) + " " + d(q.sent_at));
+  if (q.viewed_at) st.push("✓ they opened it " + d(q.viewed_at));
+  if (q.accepted_at) st.push("✓ accepted by " + esc(q.accepted_by || "") + " " + d(q.accepted_at) + ", now at the agreement stage");
+  else if (q.sent_at && q.saved_at && q.saved_at > q.sent_at) st.push('<span class="warn">edited since you sent it: email the updated quote so they see the changes</span>');
+  $("sendSt").innerHTML = st.join("<br>"); $("sendSt").hidden = !st.length;
+}
+function openCompose() {
+  if (!LEAD) return;
+  const first = String(LEAD.name || "").split(" ")[0] || "there";
+  const q = LEAD.quote || {};
+  $("cTo").textContent = (LEAD.name ? LEAD.name + " · " : "") + LEAD.email;
+  $("cSubj").value = (q.sent_at ? "Updated quote" : "Your quote") + " from BS2 (" + $("qnum").value + ")";
+  $("cMsg").value = `Hi ${first},\n\nThanks for taking the time to talk. Here's ${q.sent_at ? "the updated" : "your"} quote${$("project").value ? " for " + $("project").value.toLowerCase() : ""}. It lays out the setup, the monthly plan and the tools you'd own, with their costs.\n\nIf it looks good, you can accept it right from the page and I'll send the service agreement next. Any questions, just reply here.\n\nBen\nBS2`;
+  $("compose").hidden = false; $("cMsg").focus();
+}
+async function sendQuote() {
+  const b = $("cSend"); b.disabled = true; b.textContent = "Sending…";
+  clearTimeout(leadTimer); await saveLead();
+  const { data, error } = await SB.functions.invoke("send-quote", { body: { lead_id: LEAD.id, subject: $("cSubj").value, message: $("cMsg").value, snapshot: snapshot(), page: location.href } });
+  let msg = data && data.error;
+  if (error && !msg) { try { msg = (await error.context.json()).error; } catch (e) { msg = "The send-quote function isn't set up in Supabase yet."; } }
+  b.disabled = false; b.textContent = "Send quote";
+  if (msg) { toast(msg); return; }
+  const { data: fresh } = await SB.from("leads").select("*").eq("id", LEAD.id).single();
+  if (fresh) { Object.assign(LEAD, fresh); }
+  $("compose").hidden = true; showSendState(); toast("Sent to " + data.email + ". They're at the quote stage now.");
+}
+$("emailBtn").onclick = openCompose;
+$("cCancel").onclick = () => { $("compose").hidden = true; };
+$("cSend").onclick = sendQuote;
 function pickLead(id) {
   clearTimeout(leadTimer);
   LEAD = LEADS.find(l => l.id === id) || null;
   $("leadPick").value = LEAD ? LEAD.id : "";
   $("backPipe").hidden = !LEAD; if (LEAD) $("backPipe").href = "pipeline.html?" + (embed ? "embed=1&" : "") + "lead=" + LEAD.id;
+  $("compose").hidden = true; showSendState();
   if (!LEAD) { $("leadSt").className = "st"; $("leadSt").textContent = "not linked: this quote only stays in this browser"; return; }
   fillFromLead(LEAD, false); renderTools(); renderWork();
   const had = !!(LEAD.quote && LEAD.quote.builder);
   render();
   if (!had) queueLeadSave(); else { clearTimeout(leadTimer); $("leadSt").className = "st ok"; $("leadSt").textContent = "✓ linked to " + (LEAD.name || "this lead") + "'s pipeline record"; }
+  showSendState();
+  if (qs.get("send") === "1" && qs.get("lead") === LEAD.id && !$("emailBtn").disabled) openCompose();
 }
 (async () => {
   if (!window.supabase) return;
