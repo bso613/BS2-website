@@ -112,10 +112,17 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
     box.innerHTML = `<h2>Accepted ✓</h2><p>Accepted by ${esc(who)}${when ? " on " + esc(longDate(when)) : ""}.</p><div id="payBox"><p>Checking your payment…</p></div>`;
     const r = await pay({ action: "status" });
     const pb = $("payBox");
-    if (r.paid) { pb.innerHTML = `<h2 style="margin-top:6px">${r.pending ? "Payment received, clearing ✓" : "Paid ✓"}</h2><p>${esc(r.label)}: ${money(r.amount)}${r.pending ? ". Bank debits take a few business days to clear." : "."} Ben will be in touch to kick off your project. Thank you!</p>`; return; }
-    if (r.error && !r.amount) { pb.innerHTML = `<p class="msg">${esc(r.error)}</p>`; return; }
-    pb.innerHTML = `<p>Next step: ${esc(r.label)} of <strong style="color:var(--text)">${money(r.amount)}</strong>, by card or bank debit.</p>
-      <div class="row"><button class="btn" id="payBtn" type="button">Pay ${money(r.amount)} securely →</button></div>
+    if (r.error && !r.next && !r.deposit) { pb.innerHTML = `<p class="msg">${esc(r.error)}</p>`; return; }
+    const paidLine = (p, title) => `<h2 style="margin-top:6px">${p.pending ? title + ": received, clearing ✓" : title + ": paid ✓"}</h2><p>${esc(p.label)}: ${money(p.amount)}${p.pending ? ". Bank debits take a few business days to clear." : "."}</p>`;
+    let html = r.deposit ? paidLine(r.deposit, "First payment") : "";
+    if (r.final) html += paidLine(r.final, "Final payment") + (r.final.monthly ? `<p>Your monthly plan of ${money(r.final.monthly)} renews automatically each month.</p>` : "");
+    if (!r.next) { pb.innerHTML = html + (r.final ? `<p>All set. Thank you!</p>` : `<p>Ben will be in touch to kick off your project. Thank you!</p>`); return; }
+    const n = r.next;
+    const what = n.phase === "final"
+      ? `Your project is delivered. Last step: the rest of your setup, ${money(n.once)}${n.monthly ? `, plus your first month of ${money(n.monthly)}. After that the monthly plan renews automatically` : ""}.`
+      : `Next step: ${esc(n.label)} of <strong style="color:var(--text)">${money(n.amount)}</strong>, by card or bank debit.`;
+    pb.innerHTML = html + `<p>${what}</p>
+      <div class="row"><button class="btn" id="payBtn" type="button">Pay ${money(n.amount)} securely →</button></div>
       <p class="msg" id="payErr" role="alert" hidden></p>`;
     $("payBtn").onclick = startPay;
     if (justNow) startPay();
@@ -123,9 +130,10 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
   if (data.accepted_at) return done(data.accepted_by, data.accepted_at);
   if (expired) { box.innerHTML = `<h2>This quote has expired</h2><p>Reply to the quote email and Ben will send a fresh one.</p>`; return; }
   // What they're agreeing to, in plain words, before they accept. Amounts come from the same place Stripe will charge.
-  const terms = await pay({ action: "status" });
-  const plan = terms.label === "monthly plan";
-  const amt = money(terms.amount);
+  const st = await pay({ action: "status" });
+  const terms = { amount: st.next ? st.next.amount : 0 };
+  const plan = !!(st.plan && st.plan.spread);
+  const amt = money(terms.amount), mo = st.plan ? money(st.plan.monthly) : "";
   const points = plan ? [
       `<strong>$0 down.</strong> Your setup is spread over 12 months, inside your monthly payment of <strong>${amt}</strong>.`,
       `The first month is charged today, then the same day each month. 12-month minimum.`,
@@ -134,7 +142,7 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
     : [
       `<strong>Today: ${amt} deposit</strong>, which is 50% of your setup. It books your project and starts the work.`,
       `<strong>The other ${amt}</strong> is due when your project is delivered.`,
-      `Your monthly plan starts at launch. Cancel it any time with 30 days' notice.`,
+      `Your monthly plan${st.plan && st.plan.monthly ? ` of ${mo}` : ""} starts at launch. Cancel it any time with 30 days' notice.`,
       `Pay by card or bank debit. Bank debit has lower fees on bigger amounts.`];
   box.innerHTML = `<h2>Ready to go?</h2>
     ${terms.amount ? `<ul class="terms">${points.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}

@@ -308,10 +308,16 @@
     else if (q && q.accepted_at) $("tAgree").innerHTML = `<p class="line">Ben is sending your service agreement next.</p>`;
     if (q && q.accepted_at) {
       $("tInv").innerHTML = `<p class="line">Your first invoice shows up here once your project starts.</p>`;
-      const dp = q.deposit || {}, amt = dp.cents != null ? " $" + (dp.cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2 }) : "";
-      $("tPay").innerHTML = dp.paid_at
-        ? `<p class="line ok">✓ ${e(dp.label || "deposit")}${amt} ${dp.pending ? "received, clearing" : "paid"} ${d(dp.paid_at)}</p>`
-        : `<p class="line">Your first payment is due: card or bank debit.</p>${q.token ? `<a class="go mono" href="quote.html?t=${encodeURIComponent(q.token)}">pay now &rarr;</a>` : ""}`;
+      const dp = q.deposit || {}, fp = q.final || {};
+      const amt = p => " $" + (((+p.once || +p.cents || 0) + (+p.monthly || 0)) / 100).toLocaleString("en-CA", { minimumFractionDigits: 2 });
+      const payLink = q.token ? `<a class="go mono" href="quote.html?t=${encodeURIComponent(q.token)}">pay now &rarr;</a>` : "";
+      const lines = [];
+      if (dp.paid_at) lines.push(`<p class="line ok">✓ ${e(dp.label || "first payment")}${amt(dp)} ${dp.pending ? "received, clearing" : "paid"} ${d(dp.paid_at)}</p>`);
+      if (fp.paid_at) lines.push(`<p class="line ok">✓ ${e(fp.label || "final payment")}${amt(fp)} paid ${d(fp.paid_at)}</p>`);
+      if (!dp.paid_at) lines.push(`<p class="line">Your first payment is due: card or bank debit.</p>${payLink}`);
+      else if (fp.requested_at && !fp.paid_at) lines.push(`<p class="line">Project delivered. The rest of your setup and your monthly plan are ready to pay.</p>${payLink}`);
+      $("tPay").innerHTML = lines.join("");
+      if (fp.requested_at) $("tInv").innerHTML = `<p class="line">${fp.paid_at ? "✓ setup paid in full." : "Final setup invoice sent " + d(fp.requested_at) + "."}${fp.monthly ? `<small>monthly plan: $${(fp.monthly / 100).toFixed(2)}, renews automatically</small>` : ""}</p>`;
     }
   }
   function openPane(id) {
@@ -431,7 +437,12 @@
         sb.rpc("is_admin").then(({ data }) => setRole(data === true, session.user.email, sb)); }
       else show("signin");
     };
-    sb.auth.getSession().then(({ data, error }) => {
+    sb.auth.getSession().then(async ({ data, error }) => {
+      // A saved sign-in can outlive the account (e.g. Ben deleted it). Ask the server, and sign out if it's gone.
+      if (data.session) {
+        const { error: gone } = await sb.auth.getUser();
+        if (gone) { await sb.auth.signOut({ scope: "local" }); render(null); note("Your portal access has ended. Email Ben if that's unexpected.", "warn"); return; }
+      }
       render(data.session);
       if (!data.session && (linkError || error)) {
         const why = (linkError || error.message).replace(/\+/g, " ");

@@ -285,7 +285,7 @@ function qMoney(q) {
 let LEADS = [], EVENTS = {}, sel = null, tab = "intake";
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
-const money = n => "$" + (+n || 0).toLocaleString("en-CA", { maximumFractionDigits: 2 });
+const money = n => "$" + (+n || 0).toLocaleString("en-CA", Number.isInteger(+n || 0) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const idx = s => STAGES.findIndex(x => x.id === s);
 const lead = () => LEADS.find(l => l.id === sel);
 const when = t => new Date(t).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
@@ -344,6 +344,15 @@ function renderBoard() {
   }).join("");
 }
 
+// Client stage: once the first payment is in, one click bills the rest and starts the monthly plan.
+const paidAmt = p => money(((p.once ?? p.cents ?? 0) + (p.monthly || 0)) / 100);
+function finishBtn(l) {
+  const q = l.quote || {};
+  if (q.final && q.final.paid_at) return `<span class="chip ok">✓ paid in full</span>`;
+  if (q.final) return `<span class="chip">project delivered · waiting on final payment</span>`;
+  if (q.deposit && q.deposit.paid_at) return `<button class="btn solid" id="finish" type="button">Project delivered: bill the rest →</button>`;
+  return `<span class="chip ok">client</span>`;
+}
 function renderRecord() {
   const l = lead(); const rec = $("record");
   if (!l) { rec.hidden = true; return; }
@@ -354,7 +363,7 @@ function renderRecord() {
     <div class="rhead">
       <div><h2>${esc(l.name || l.business || "No name")}</h2><p>${[l.name && l.business ? esc(l.business) : "", l.email ? `<span class="mono">${esc(l.email)}</span>` : "", hrsOf(l) || l.hours_budget ? `<span class="mono" style="color:var(--accent)">⏱ ${fmtH(hrsOf(l))} logged${l.hours_budget ? " of " + fmtH(+l.hours_budget) : ""}</span>` : ""].filter(Boolean).join(" · ")}</p></div>
       <div class="row">
-        ${next ? `<button class="btn solid" id="advance" type="button">${nextLabel} →</button>` : `<span class="chip ok">client</span>`}
+        ${next ? `<button class="btn solid" id="advance" type="button">${nextLabel} →</button>` : finishBtn(l)}
         ${at > 0 ? `<button class="btn" id="back" type="button">← Back a stage</button>` : ""}
         <button class="btn" id="lost" type="button">Mark lost</button>
       </div>
@@ -398,7 +407,8 @@ function pane(l, at) {
     const st = [q.sent_at ? "✓ emailed to " + esc(q.sent_to || l.email) + " " + when(q.sent_at) : "not sent yet",
       q.viewed_at ? "✓ opened " + when(q.viewed_at) : q.sent_at ? "not opened yet" : "",
       q.accepted_at ? "✓ accepted by " + esc(q.accepted_by) + " " + when(q.accepted_at) : "",
-      q.deposit && q.deposit.paid_at ? "✓ " + esc(q.deposit.label || "deposit") + " " + money((q.deposit.cents || 0) / 100) + (q.deposit.pending ? " paid by bank debit, clearing" : " paid") + " " + when(q.deposit.paid_at)
+      q.deposit && q.deposit.paid_at ? "✓ " + esc(q.deposit.label || "deposit") + " " + paidAmt(q.deposit) + (q.deposit.pending ? " paid by bank debit, clearing" : " paid") + " " + when(q.deposit.paid_at) : "",
+      q.final && q.final.paid_at ? "✓ " + esc(q.final.label) + " " + paidAmt(q.final) + " paid " + when(q.final.paid_at) : q.final ? "delivered " + when(q.final.requested_at) + ", final payment emailed"
         : q.accepted_at ? "waiting on their first payment" : ""].filter(Boolean).join(" · ");
     return `<p class="src">${esc(q.num || "quote")}${q.saved_at ? " · saved " + when(q.saved_at) : ""}</p>
       <p class="note mono" style="color:${q.accepted_at ? "var(--accent)" : "var(--muted)"}">${st}</p>
@@ -449,12 +459,9 @@ function pane(l, at) {
   if (tab === "portal") {
     if (at < 4) return locked("portal");
     return `<div class="portal">
-      <h4>give them portal access</h4>
-      <p>Their record is already linked to <span class="mono">${esc(l.email)}</span>.${(EVENTS[l.id] || []).some(e => /^Portal invite sent/.test(e.text)) ? " Invite already sent. Send again if they lost it." : " One click left."}</p>
-      <div class="row">
-        <button class="btn solid" id="sendInvite" type="button">Send portal invite</button>
-      </div>
-      <p class="note">They get an email from Supabase, choose a password or use Google, and land in the portal.</p>
+      <h4>portal access</h4>
+      <p>${(EVENTS[l.id] || []).some(e => /^Portal invite sent/.test(e.text)) ? "✓ Invite sent to" : "The invite goes out automatically when their first payment comes in, to"} <span class="mono">${esc(l.email)}</span>.</p>
+      <p class="note">They get an email from Supabase, choose a password or use Google, and land in the portal. Lost it? <button class="btn x" id="sendInvite" type="button" style="padding:2px 6px">resend invite</button></p>
     </div>`;
   }
   return "";
@@ -512,12 +519,24 @@ document.addEventListener("click", async e => {
     b.outerHTML = `<input type="number" class="eh" data-ehid="${ev.id}" min="0" max="24" step="0.25" value="${ev.hours || ""}" placeholder="hours" aria-label="Hours for this note">`;
     document.querySelector(`[data-ehid="${ev.id}"]`).focus(); return;
   }
+  if (id === "finish") {
+    const b = e.target;
+    const q = l.quote || {}, rest = (+q.setup || 0) - Math.round((+q.setup || 0) * 50) / 100;
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = q.spread ? "Click again: email them it's live" : `Click again: email ${money(rest)}${q.monthly ? " + " + money(q.monthly) + "/mo" : ""} to pay`; return; }
+    b.disabled = true; b.textContent = "Sending…";
+    const { data, error } = await sb.functions.invoke("finish-project", { body: { lead_id: l.id, page: location.href } });
+    let msg = data?.error;
+    if (error && !msg) { try { msg = (await error.context.json()).error; } catch { msg = "The finish-project function isn't set up yet in Supabase."; } }
+    if (msg) { b.disabled = false; b.dataset.armed = ""; b.textContent = "Project delivered: bill the rest →"; toast(msg, true); return; }
+    await load(); render();
+    toast(data.owes ? "Emailed " + data.email + " to pay the rest and start their plan." : "Emailed " + data.email + ". Their plan is already running.");
+  }
   if (id === "sendInvite") {
     const b = e.target; b.disabled = true; b.textContent = "Sending…";
     const { data, error } = await sb.functions.invoke("invite-client", { body: { lead_id: l.id, redirect_to: new URL("portal.html", location.href).href } });
     let msg = data?.error;
     if (error && !msg) { try { msg = (await error.context.json()).error; } catch { msg = /Failed to send|fetch/i.test(error.message) ? "The invite function isn't set up yet in Supabase." : error.message; } }
-    if (msg) { b.disabled = false; b.textContent = "Send portal invite"; toast(msg, true); return; }
+    if (msg) { b.disabled = false; b.textContent = "resend invite"; toast(msg, true); return; }
     (EVENTS[l.id] ||= []).push({ who: "Ben", text: "Portal invite sent to " + data.email + ".", created_at: new Date().toISOString() });
     renderRecord(); toast("Invite sent to " + data.email + ".");
   }
