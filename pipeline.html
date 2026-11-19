@@ -397,7 +397,9 @@ function pane(l, at) {
     const m = qMoney(q);
     const st = [q.sent_at ? "✓ emailed to " + esc(q.sent_to || l.email) + " " + when(q.sent_at) : "not sent yet",
       q.viewed_at ? "✓ opened " + when(q.viewed_at) : q.sent_at ? "not opened yet" : "",
-      q.accepted_at ? "✓ accepted by " + esc(q.accepted_by) + " " + when(q.accepted_at) : ""].filter(Boolean).join(" · ");
+      q.accepted_at ? "✓ accepted by " + esc(q.accepted_by) + " " + when(q.accepted_at) : "",
+      q.deposit && q.deposit.paid_at ? "✓ " + esc(q.deposit.label || "deposit") + " " + money((q.deposit.cents || 0) / 100) + (q.deposit.pending ? " paid by bank debit, clearing" : " paid") + " " + when(q.deposit.paid_at)
+        : q.accepted_at ? "waiting on their first payment" : ""].filter(Boolean).join(" · ");
     return `<p class="src">${esc(q.num || "quote")}${q.saved_at ? " · saved " + when(q.saved_at) : ""}</p>
       <p class="note mono" style="color:${q.accepted_at ? "var(--accent)" : "var(--muted)"}">${st}</p>
       <div class="two">

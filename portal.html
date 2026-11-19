@@ -308,7 +308,10 @@
     else if (q && q.accepted_at) $("tAgree").innerHTML = `<p class="line">Ben is sending your service agreement next.</p>`;
     if (q && q.accepted_at) {
       $("tInv").innerHTML = `<p class="line">Your first invoice shows up here once your project starts.</p>`;
-      $("tPay").innerHTML = `<p class="line">Your deposit link shows up here. Card or bank debit.</p>`;
+      const dp = q.deposit || {}, amt = dp.cents != null ? " $" + (dp.cents / 100).toLocaleString("en-CA", { minimumFractionDigits: 2 }) : "";
+      $("tPay").innerHTML = dp.paid_at
+        ? `<p class="line ok">✓ ${e(dp.label || "deposit")}${amt} ${dp.pending ? "received, clearing" : "paid"} ${d(dp.paid_at)}</p>`
+        : `<p class="line">Your first payment is due: card or bank debit.</p>${q.token ? `<a class="go mono" href="quote.html?t=${encodeURIComponent(q.token)}">pay now &rarr;</a>` : ""}`;
     }
   }
   function openPane(id) {

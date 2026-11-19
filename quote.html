@@ -89,11 +89,36 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
       ${(s.lines || []).map(l => `<div class="line ${l.total ? "total" : ""}"><span>${esc(l.label)}</span><span>${esc(l.value)}</span></div>`).join("")}</section>`).join("")}
     <section class="accept" id="acceptBox"></section>`;
   const box = $("acceptBox");
-  const done = (who, when) => { box.innerHTML = `<h2>Accepted ✓</h2><p>Accepted by ${esc(who)}${when ? " on " + esc(longDate(when)) : ""}. Ben will send your service agreement next. Thank you!</p>`; };
+  const money = n => "$" + (+n || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pay = async (body) => {
+    const { data: r, error } = await sb.functions.invoke("pay-quote", { body: { t, ...body } });
+    if (r) return r;
+    try { return await error.context.json(); } catch (e) { return { error: "Payments couldn't load. Please refresh, or reply to the quote email." }; }
+  };
+  const startPay = async () => {
+    const b = $("payBtn"); if (b) { b.disabled = true; b.textContent = "Opening secure payment…"; }
+    const r = await pay({ action: "start", page: location.origin + location.pathname });
+    if (r.url) { location.href = r.url; return; }
+    if (b) { b.disabled = false; b.textContent = "Try again"; }
+    $("payErr").textContent = r.error || "Something went wrong."; $("payErr").hidden = false;
+  };
+  // After accepting: pay the deposit (or start the monthly plan) on Stripe, then come back here.
+  const done = async (who, when, justNow) => {
+    box.innerHTML = `<h2>Accepted ✓</h2><p>Accepted by ${esc(who)}${when ? " on " + esc(longDate(when)) : ""}.</p><div id="payBox"><p>Checking your payment…</p></div>`;
+    const r = await pay({ action: "status" });
+    const pb = $("payBox");
+    if (r.paid) { pb.innerHTML = `<h2 style="margin-top:6px">${r.pending ? "Payment received, clearing ✓" : "Paid ✓"}</h2><p>${esc(r.label)}: ${money(r.amount)}${r.pending ? ". Bank debits take a few business days to clear." : "."} Ben will send your service agreement next. Thank you!</p>`; return; }
+    if (r.error && !r.amount) { pb.innerHTML = `<p class="msg">${esc(r.error)}</p>`; return; }
+    pb.innerHTML = `<p>Next step: ${esc(r.label)} of <strong style="color:var(--text)">${money(r.amount)}</strong>, by card or bank debit. Then Ben sends your service agreement.</p>
+      <div class="row"><button class="btn" id="payBtn" type="button">Pay ${money(r.amount)} securely →</button></div>
+      <p class="msg" id="payErr" role="alert" hidden></p>`;
+    $("payBtn").onclick = startPay;
+    if (justNow) startPay();
+  };
   if (data.accepted_at) return done(data.accepted_by, data.accepted_at);
   if (expired) { box.innerHTML = `<h2>This quote has expired</h2><p>Reply to the quote email and Ben will send a fresh one.</p>`; return; }
   box.innerHTML = `<h2>Ready to go?</h2>
-    <p>Type your full name and click accept. Ben sees it right away and sends the service agreement with the full terms next. Nothing is charged today.</p>
+    <p>Type your full name and click accept. You'll go straight to a secure Stripe page for the first payment, then Ben sends the service agreement with the full terms.</p>
     <div class="row"><input id="signer" autocomplete="name" placeholder="Your full name" aria-label="Your full name"><button class="btn" id="acceptBtn" type="button">Accept quote</button></div>
     <p class="msg" id="err" role="alert" hidden></p>
     <p style="font-size:13px;color:var(--faint)">Questions or changes? Just reply to the quote email.</p>`;
@@ -103,7 +128,7 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
     $("acceptBtn").disabled = true; $("acceptBtn").textContent = "Accepting…";
     const r = await sb.rpc("accept_quote", { t, signer: name });
     if (r.error) { $("acceptBtn").disabled = false; $("acceptBtn").textContent = "Accept quote"; $("err").textContent = r.error.message; $("err").hidden = false; return; }
-    done(name, new Date());
+    done(name, new Date(), true);
   };
 })();
 </script>
