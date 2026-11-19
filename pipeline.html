@@ -61,6 +61,18 @@
   .chip { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line-2); color: var(--muted); }
   .chip.ok { border-color: var(--accent); color: var(--accent); }
   .chip.wait { border-color: var(--warn); color: var(--warn); }
+  .chip.out { border-color: var(--info); color: var(--info); }
+  .timebox { border: 1px solid var(--line-2); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .timebox .big { font-family: var(--mono); font-size: 22px; font-variant-numeric: tabular-nums; }
+  .timebox .big small { font-size: 13px; color: var(--faint); }
+  .bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+  .bar.over span { background: var(--warn); }
+  .hrs { font-family: var(--mono); font-size: 11px; color: var(--accent); border: 1px solid var(--accent); border-radius: 99px; padding: 0 7px; margin-left: 6px; }
+  .addh { font: inherit; font-family: var(--mono); font-size: 11px; color: var(--faint); background: none; border: 1px dashed var(--line-2); border-radius: 99px; padding: 0 7px; margin-left: 6px; cursor: pointer; }
+  .addh:hover { color: var(--accent); border-color: var(--accent); }
+  input[type=number] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; color-scheme: dark; }
+  .msg input.eh { width: 80px; padding: 2px 6px; font-size: 12px; margin-left: 6px; }
 
   /* Record */
   .record { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
@@ -147,6 +159,9 @@
       <div class="q" style="flex:1;min-width:220px"><label for="nStage">Where are things at?</label>
         <select id="nStage"><option value="lead">New lead, no call yet</option><option value="call">We already had the 30-min call</option></select></div>
       <div class="q" id="nCallWrap" hidden><label for="nCall">Call date</label><input type="date" id="nCall"></div>
+      <div class="q" style="flex:1;min-width:220px"><label for="nSource">How did it start?</label>
+        <select id="nSource"><option value="manual">They came to me</option><option value="outreach">I'm reaching out (pitch or demo)</option></select></div>
+      <div class="q" id="nBudgetWrap" hidden style="max-width:160px"><label for="nBudget">Time budget (hours)</label><input type="number" id="nBudget" min="0.5" step="0.5" placeholder="e.g. 12"></div>
     </div>
     <div class="row"><button class="btn solid" type="submit" id="addSubmit">Add lead</button><button class="btn" type="button" id="cancelAdd">Cancel</button></div>
   </form>
@@ -248,13 +263,14 @@ function openLeadForm(l) {
   $("stageBox").hidden = !!l;
   $("nName").value = l?.name || ""; $("nEmail").value = l?.email || ""; $("nBiz").value = l?.business || "";
   $("intakeFields").innerHTML = intakeFields(l?.intake || {});
+  $("nSource").value = "manual"; $("nBudgetWrap").hidden = true; $("nEmail").required = !(l && l.source === "outreach");
   $("nStage").value = "lead"; $("nCallWrap").hidden = true; $("nCall").value = new Date().toLocaleDateString("en-CA");
   $("addForm").hidden = false; $("addForm").scrollIntoView({ behavior: "smooth", block: "start" }); $("nName").focus();
 }
 const TABS = [
   { id: "intake", name: "intake", from: 0 }, { id: "onboard", name: "onboarding", from: 1 },
   { id: "quote", name: "quote", from: 1 }, { id: "agreement", name: "agreement", from: 3 },
-  { id: "messages", name: "messages", from: 0 }, { id: "portal", name: "portal", from: 4 },
+  { id: "messages", name: "timeline", from: 0 }, { id: "portal", name: "portal", from: 4 },
 ];
 const PLANS = { Care: 100, Plus: 200, Pro: 300 };
 // What a saved quote means each month. Older quotes have no maint/planfee, so fall back to the plan price and 10%.
@@ -271,6 +287,10 @@ const money = n => "$" + (+n || 0).toLocaleString("en-CA", { maximumFractionDigi
 const idx = s => STAGES.findIndex(x => x.id === s);
 const lead = () => LEADS.find(l => l.id === sel);
 const when = t => new Date(t).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+// Time tracking: hours live on timeline notes (lead_events.hours); leads.hours_budget is optional.
+const hrsOf = l => (EVENTS[l.id] || []).reduce((s, e) => s + (+e.hours || 0), 0);
+const fmtH = n => (Math.round(n * 100) / 100).toLocaleString("en-CA") + "h";
+const SRC = { web: "from your intake form", tally: "from tally intake form", outreach: "outreach: you're pitching them", manual: "added by you" };
 function toast(t, bad) { const el = $("toast"); el.textContent = t; el.style.color = bad ? "var(--warn)" : ""; setTimeout(() => { if (el.textContent === t) el.textContent = ""; }, 4000); }
 
 async function save(l, fields) {
@@ -278,8 +298,9 @@ async function save(l, fields) {
   const { error } = await sb.from("leads").update({ ...fields, updated_at: new Date().toISOString() }).eq("id", l.id);
   if (error) toast("Couldn't save: " + error.message, true);
 }
-async function logEvent(l, who, text) {
-  const { data, error } = await sb.from("lead_events").insert({ lead_id: l.id, who, text }).select().single();
+async function logEvent(l, who, text, hours) {
+  const row = { lead_id: l.id, who, text }; if (hours > 0) row.hours = hours;
+  const { data, error } = await sb.from("lead_events").insert(row).select().single();
   if (error) { toast("Couldn't log that: " + error.message, true); return; }
   (EVENTS[l.id] ||= []).push(data);
 }
@@ -303,7 +324,9 @@ async function load() {
 
 function chips(l) {
   const at = idx(l.stage), c = [];
-  c.push(`<span class="chip ${l.source === "manual" ? "" : "ok"}">${l.source === "manual" ? "added by you" : "intake ✓"}</span>`);
+  c.push(l.source === "outreach" ? `<span class="chip out">outreach</span>` : `<span class="chip ${l.source === "manual" ? "" : "ok"}">${l.source === "manual" ? "added by you" : "intake ✓"}</span>`);
+  const h = hrsOf(l), b = +l.hours_budget || 0;
+  if (h || b) c.push(`<span class="chip ${b && h > b ? "wait" : "ok"}" title="Time logged${b ? " of budget" : ""}">⏱ ${b ? (Math.round(h * 100) / 100) + " / " + fmtH(b) : fmtH(h)}</span>`);
   if (l.call_at) c.push(`<span class="chip ${at > 1 ? "ok" : "wait"}">${at > 1 ? "call ✓" : "call " + when(l.call_at)}</span>`);
   if (l.quote) c.push(`<span class="chip ${at >= 3 ? "ok" : "wait"}">${at >= 3 ? "quote ✓" : at === 2 ? "quote sent" : "quote draft"}</span>`);
   if (l.stage === "client") c.push(`<span class="chip ok">client</span>`);
@@ -315,7 +338,7 @@ function renderBoard() {
     return `<div class="col"><div class="colhead"><h3>${st.name}</h3><span class="n">${items.length}</span></div>
       <p class="colhint">${st.hint}</p>
       ${items.map(l => `<button class="card ${l.id === sel ? "sel" : ""}" type="button" data-id="${l.id}">
-        <b>${esc(l.name || l.email)}</b><small>${esc(l.business || "")}</small><span class="chips">${chips(l)}</span></button>`).join("")}</div>`;
+        <b>${esc(l.name || l.business || l.email)}</b><small>${esc(l.name ? l.business || "" : "")}</small><span class="chips">${chips(l)}</span></button>`).join("")}</div>`;
   }).join("");
 }
 
@@ -327,7 +350,7 @@ function renderRecord() {
   const nextLabel = { call: "Log the 30-min call", quote: "Email quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
   rec.innerHTML = `
     <div class="rhead">
-      <div><h2>${esc(l.name || "No name")}</h2><p>${esc(l.business || "")} · <span class="mono">${esc(l.email || "")}</span></p></div>
+      <div><h2>${esc(l.name || l.business || "No name")}</h2><p>${[l.name && l.business ? esc(l.business) : "", l.email ? `<span class="mono">${esc(l.email)}</span>` : "", hrsOf(l) || l.hours_budget ? `<span class="mono" style="color:var(--accent)">⏱ ${fmtH(hrsOf(l))} logged${l.hours_budget ? " of " + fmtH(+l.hours_budget) : ""}</span>` : ""].filter(Boolean).join(" · ")}</p></div>
       <div class="row">
         ${next ? `<button class="btn solid" id="advance" type="button">${nextLabel} →</button>` : `<span class="chip ok">client</span>`}
         ${at > 0 ? `<button class="btn" id="back" type="button">← Back a stage</button>` : ""}
@@ -336,7 +359,7 @@ function renderRecord() {
     </div>
     <div id="callPick" hidden class="row"><label class="note" for="callAt">When was or is the call? Nothing is sent to them.</label><input type="datetime-local" id="callAt" style="max-width:240px"><button class="btn solid" id="confirmCall" type="button">Save call</button></div>
     <div class="stepper">${STAGES.map((s, i) => `<span class="step ${i < at ? "done" : i === at ? "now" : ""}">${i < at ? "✓ " : ""}${s.name}</span>`).join("")}</div>
-    <div class="tabs" role="tablist">${TABS.map(t => `<button class="tab" role="tab" type="button" data-tab="${t.id}" aria-selected="${tab === t.id}">${t.name}${at < t.from ? `<span class="lock">· later</span>` : ""}</button>`).join("")}</div>
+    <div class="tabs" role="tablist">${TABS.map(t => `<button class="tab" role="tab" type="button" data-tab="${t.id}" aria-selected="${tab === t.id}">${t.name}${t.id === "messages" && hrsOf(l) ? " · " + fmtH(hrsOf(l)) : ""}${at < t.from ? `<span class="lock">· later</span>` : ""}</button>`).join("")}</div>
     <div class="pane" id="pane">${pane(l, at)}</div>`;
 }
 
@@ -344,7 +367,7 @@ function pane(l, at) {
   const locked = t => `<p class="empty">This opens at the <b>${STAGES[TABS.find(x => x.id === t).from].name}</b> stage. Everything from earlier stages carries over.</p>`;
   if (tab === "intake") {
     const rows = [["Name", l.name], ["Email", l.email], ["Business", l.business], ...Object.entries(l.intake || {})];
-    return `<p class="src">${l.source === "web" ? "from your intake form" : l.source === "tally" ? "from tally intake form" : "added by you"} · ${when(l.created_at)}</p>
+    return `<p class="src">${SRC[l.source] || SRC.manual} · ${when(l.created_at)}</p>
       <div class="kv">${rows.map(([k, v]) => `<div>${esc(k)}</div><div>${esc(v)}</div>`).join("")}</div>
       <button class="btn" id="editIntake" type="button" style="align-self:flex-start">${Object.keys(l.intake || {}).length > 1 ? "Edit answers" : "Fill in intake answers"}</button>`;
   }
@@ -406,9 +429,19 @@ function pane(l, at) {
         <div>Status</div><div>${at >= 4 ? "Signed" + (a.signed_at ? " " + when(a.signed_at) : "") : "Sent for signature"}</div>
       </div>`;
   }
-  if (tab === "messages") return `<p class="src">every form, booking and note for this lead, newest first</p>
-    ${(EVENTS[l.id] || []).slice().reverse().map(m => `<div class="msg"><span class="meta">${esc(m.who)} · ${when(m.created_at)}</span><p>${esc(m.text)}</p></div>`).join("") || `<p class="note">Nothing logged yet.</p>`}
-    <div class="row"><input type="text" id="newmsg" placeholder="Log a note, call or email…" aria-label="New note" style="flex:1;min-width:200px"><button class="btn" id="addmsg" type="button">Add</button></div>`;
+  if (tab === "messages") {
+    const h = hrsOf(l), b = +l.hours_budget || 0, pct = b ? Math.min(100, h / b * 100) : 0;
+    return `<div class="timebox">
+      <div class="row" style="justify-content:space-between;align-items:flex-end">
+        <p class="big">${fmtH(h)} <small>${b ? "of " + fmtH(b) + " budget" + (h > b ? " · over by " + fmtH(h - b) : " · " + fmtH(b - h) + " left") : "logged on this lead"}</small></p>
+        <label class="note row" style="gap:6px">Budget <input type="number" id="budget" min="0" step="0.5" value="${b || ""}" placeholder="none" style="width:90px"> h</label>
+      </div>
+      ${b ? `<div class="bar ${h > b ? "over" : ""}"><span style="width:${pct}%"></span></div>` : ""}
+    </div>
+    <div class="row"><input type="text" id="newmsg" placeholder="Log a note, call, email or work session…" aria-label="New note" style="flex:1;min-width:200px"><input type="number" id="newhrs" min="0" max="24" step="0.25" placeholder="hours" aria-label="Hours spent" style="width:100px"><button class="btn" id="addmsg" type="button">Add</button></div>
+    <p class="src">every form, booking, note and hour for this lead, newest first</p>
+    ${(EVENTS[l.id] || []).slice().reverse().map(m => `<div class="msg"><span class="meta">${esc(m.who)} · ${when(m.created_at)}${m.hours ? `<span class="hrs" title="Hours spent">${fmtH(+m.hours)}</span>` : ""}${m.id && m.who === "Ben" ? `<button class="addh" type="button" data-eh="${m.id}">${m.hours ? "edit" : "+ hours"}</button>` : ""}</span><p>${esc(m.text)}</p></div>`).join("") || `<p class="note">Nothing logged yet.</p>`}`;
+  }
   if (tab === "portal") {
     if (at < 4) return locked("portal");
     return `<div class="portal">
@@ -465,8 +498,15 @@ document.addEventListener("click", async e => {
     LEADS = LEADS.filter(x => x.id !== l.id); sel = LEADS[0]?.id || null; render(); toast("Marked as lost. It's kept in Supabase for your records.");
   }
   if (id === "addmsg") {
-    const v = $("newmsg").value.trim(); if (!v) return;
-    await logEvent(l, "Ben", v); renderRecord();
+    const hv = parseFloat($("newhrs").value) || 0;
+    if (hv < 0 || hv > 24) { toast("Hours should be between 0 and 24.", true); return; }
+    const v = $("newmsg").value.trim() || (hv ? "Work session." : ""); if (!v) return;
+    await logEvent(l, "Ben", v, hv); render(); if (hv) toast("Logged " + fmtH(hv) + ". Total on this lead: " + fmtH(hrsOf(l)) + ".");
+  }
+  if (e.target.dataset.eh) {
+    const b = e.target, ev = (EVENTS[l.id] || []).find(x => String(x.id) === b.dataset.eh); if (!ev) return;
+    b.outerHTML = `<input type="number" class="eh" data-ehid="${ev.id}" min="0" max="24" step="0.25" value="${ev.hours || ""}" placeholder="hours" aria-label="Hours for this note">`;
+    document.querySelector(`[data-ehid="${ev.id}"]`).focus(); return;
   }
   if (id === "sendInvite") {
     const b = e.target; b.disabled = true; b.textContent = "Sending…";
@@ -489,24 +529,44 @@ document.addEventListener("input", e => {
     l.quote = q; clearTimeout(saveTimer); saveTimer = setTimeout(async () => { await save(l, { quote: q }); if (tab === "quote") { const f = document.activeElement?.id; renderRecord(); if (f && $(f)) $(f).focus(); } }, 700);
   }
 });
-document.addEventListener("change", e => { if (e.target.dataset.qf === "plan") e.target.dispatchEvent(new Event("input", { bubbles: true })); });
+document.addEventListener("change", async e => {
+  if (e.target.dataset.qf === "plan") e.target.dispatchEvent(new Event("input", { bubbles: true }));
+  const l = lead(); if (!l) return;
+  if (e.target.dataset.ehid) {
+    const ev = (EVENTS[l.id] || []).find(x => String(x.id) === e.target.dataset.ehid); if (!ev) return;
+    const v = parseFloat(e.target.value); const hours = v > 0 && v <= 24 ? v : null;
+    const { error } = await sb.from("lead_events").update({ hours }).eq("id", ev.id);
+    if (error) { toast("Couldn't save hours: " + error.message, true); return; }
+    ev.hours = hours; render(); toast(hours ? "Saved " + fmtH(hours) + ". Total: " + fmtH(hrsOf(l)) + "." : "Hours cleared.");
+  }
+  if (e.target.id === "budget") {
+    const v = parseFloat(e.target.value); await save(l, { hours_budget: v > 0 ? v : null }); render();
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.target.id === "newmsg" || e.target.id === "newhrs")) { e.preventDefault(); $("addmsg")?.click(); }
+  if (e.key === "Enter" && e.target.dataset.ehid) { e.preventDefault(); e.target.blur(); }
+});
 $("nStage").addEventListener("change", () => { $("nCallWrap").hidden = $("nStage").value !== "call"; });
+$("nSource").addEventListener("change", () => { const o = $("nSource").value === "outreach"; $("nBudgetWrap").hidden = !o; $("nEmail").required = !o; });
 $("addForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const base = { name: $("nName").value.trim(), email: $("nEmail").value.trim().toLowerCase(), business: $("nBiz").value.trim() };
+  const base = { name: $("nName").value.trim(), email: $("nEmail").value.trim().toLowerCase() || null, business: $("nBiz").value.trim() };
   if (editing) {
     const l = editing, intake = readIntake(l.intake || {});
     await save(l, { ...base, intake }); await logEvent(l, "Ben", "Intake answers updated.");
     editing = null; $("addForm").hidden = true; tab = "intake"; render(); toast("Saved."); return;
   }
-  const row = { ...base, source: "manual", intake: readIntake({}) };
+  const out = $("nSource").value === "outreach", bud = parseFloat($("nBudget").value);
+  const row = { ...base, source: out ? "outreach" : "manual", intake: readIntake({}) };
+  if (out && bud > 0) row.hours_budget = bud;
   const had = $("nStage").value === "call";
   if (had) { row.stage = "call"; row.call_at = new Date(($("nCall").value || new Date().toLocaleDateString("en-CA")) + "T12:00").toISOString(); }
   const { data, error } = await sb.from("leads").insert(row).select().single();
   if (error) { toast("Couldn't add: " + error.message, true); return; }
   LEADS.unshift(data); sel = data.id; tab = had ? "onboard" : "intake";
-  await logEvent(data, "Ben", had ? "Lead added by hand. 30-min call already held " + new Date(row.call_at).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) + "." : "Lead added by hand.");
-  $("addForm").reset(); $("addForm").hidden = true; $("gate").hidden = true; render();
+  await logEvent(data, "Ben", out ? "Outreach lead added: you're pitching them" + (row.hours_budget ? ", time budget " + fmtH(row.hours_budget) : "") + "." : had ? "Lead added by hand. 30-min call already held " + new Date(row.call_at).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) + "." : "Lead added by hand.");
+  $("addForm").reset(); $("nBudgetWrap").hidden = true; $("nEmail").required = true; $("addForm").hidden = true; $("gate").hidden = true; render();
 });
 
 (async () => {
