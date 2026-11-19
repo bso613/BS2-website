@@ -46,6 +46,10 @@
   input { font: inherit; font-size: 16px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 13px 14px; flex: 1; min-width: 220px; }
   .btn { font: inherit; font-size: 16px; font-weight: 700; border-radius: 8px; padding: 13px 22px; cursor: pointer; border: 0; background: var(--accent); color: var(--on-accent); }
   .btn:disabled { opacity: .55; cursor: default; }
+  .terms { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.6; font-size: 15px; display: flex; flex-direction: column; gap: 6px; }
+  .terms strong { color: var(--text); }
+  .agree { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; color: var(--text); cursor: pointer; }
+  .agree input { accent-color: var(--accent); width: 18px; height: 18px; margin-top: 2px; flex: none; min-width: 0; padding: 0; }
   .msg { font-size: 15px; padding: 14px 16px; border-radius: 8px; border: 1px solid var(--warn); color: var(--warn); }
   .empty { color: var(--muted); font-size: 17px; line-height: 1.6; }
   footer { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
@@ -64,6 +68,7 @@
 <script>
 const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx"; // public by design
+const TERMS_URL = ""; // set to "terms.html" once the service agreement is published
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const t = new URLSearchParams(location.search).get("t") || "";
@@ -107,9 +112,9 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
     box.innerHTML = `<h2>Accepted ✓</h2><p>Accepted by ${esc(who)}${when ? " on " + esc(longDate(when)) : ""}.</p><div id="payBox"><p>Checking your payment…</p></div>`;
     const r = await pay({ action: "status" });
     const pb = $("payBox");
-    if (r.paid) { pb.innerHTML = `<h2 style="margin-top:6px">${r.pending ? "Payment received, clearing ✓" : "Paid ✓"}</h2><p>${esc(r.label)}: ${money(r.amount)}${r.pending ? ". Bank debits take a few business days to clear." : "."} Ben will send your service agreement next. Thank you!</p>`; return; }
+    if (r.paid) { pb.innerHTML = `<h2 style="margin-top:6px">${r.pending ? "Payment received, clearing ✓" : "Paid ✓"}</h2><p>${esc(r.label)}: ${money(r.amount)}${r.pending ? ". Bank debits take a few business days to clear." : "."} Ben will be in touch to kick off your project. Thank you!</p>`; return; }
     if (r.error && !r.amount) { pb.innerHTML = `<p class="msg">${esc(r.error)}</p>`; return; }
-    pb.innerHTML = `<p>Next step: ${esc(r.label)} of <strong style="color:var(--text)">${money(r.amount)}</strong>, by card or bank debit. Then Ben sends your service agreement.</p>
+    pb.innerHTML = `<p>Next step: ${esc(r.label)} of <strong style="color:var(--text)">${money(r.amount)}</strong>, by card or bank debit.</p>
       <div class="row"><button class="btn" id="payBtn" type="button">Pay ${money(r.amount)} securely →</button></div>
       <p class="msg" id="payErr" role="alert" hidden></p>`;
     $("payBtn").onclick = startPay;
@@ -117,17 +122,33 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
   };
   if (data.accepted_at) return done(data.accepted_by, data.accepted_at);
   if (expired) { box.innerHTML = `<h2>This quote has expired</h2><p>Reply to the quote email and Ben will send a fresh one.</p>`; return; }
+  // What they're agreeing to, in plain words, before they accept. Amounts come from the same place Stripe will charge.
+  const terms = await pay({ action: "status" });
+  const plan = terms.label === "monthly plan";
+  const amt = money(terms.amount);
+  const points = plan ? [
+      `<strong>$0 down.</strong> Your setup is spread over 12 months, inside your monthly payment of <strong>${amt}</strong>.`,
+      `The first month is charged today, then the same day each month. 12-month minimum.`,
+      `Leaving early means paying the setup balance that's left. The code is yours once setup is paid off.`,
+      `After month 12, your payment drops to the maintenance plan alone.`]
+    : [
+      `<strong>Today: ${amt} deposit</strong>, which is 50% of your setup. It books your project and starts the work.`,
+      `<strong>The other ${amt}</strong> is due when your project is delivered.`,
+      `Your monthly plan starts at launch. Cancel it any time with 30 days' notice.`,
+      `Pay by card or bank debit. Bank debit has lower fees on bigger amounts.`];
   box.innerHTML = `<h2>Ready to go?</h2>
-    <p>Type your full name and click accept. You'll go straight to a secure Stripe page for the first payment, then Ben sends the service agreement with the full terms.</p>
-    <div class="row"><input id="signer" autocomplete="name" placeholder="Your full name" aria-label="Your full name"><button class="btn" id="acceptBtn" type="button">Accept quote</button></div>
+    ${terms.amount ? `<ul class="terms">${points.map(x => `<li>${x}</li>`).join("")}</ul>` : ""}
+    <label class="agree"><input type="checkbox" id="agree"> <span>I agree to these payment terms${TERMS_URL ? ` and the <a href="${TERMS_URL}" target="_blank" rel="noopener">BS2 service agreement</a>` : ""}.</span></label>
+    <div class="row"><input id="signer" autocomplete="name" placeholder="Your full name" aria-label="Your full name"><button class="btn" id="acceptBtn" type="button">Accept and pay${terms.amount ? " " + amt : ""} →</button></div>
     <p class="msg" id="err" role="alert" hidden></p>
-    <p style="font-size:13px;color:var(--faint)">Questions or changes? Just reply to the quote email.</p>`;
+    <p style="font-size:13px;color:var(--faint)">Typing your name counts as your signature. Questions or changes? Just reply to the quote email.</p>`;
   $("acceptBtn").onclick = async () => {
     const name = $("signer").value.trim();
+    if (!$("agree").checked) { $("err").textContent = "Please tick the box to agree to the terms."; $("err").hidden = false; return; }
     if (!name) { $("err").textContent = "Please type your name first."; $("err").hidden = false; return; }
     $("acceptBtn").disabled = true; $("acceptBtn").textContent = "Accepting…";
     const r = await sb.rpc("accept_quote", { t, signer: name });
-    if (r.error) { $("acceptBtn").disabled = false; $("acceptBtn").textContent = "Accept quote"; $("err").textContent = r.error.message; $("err").hidden = false; return; }
+    if (r.error) { $("acceptBtn").disabled = false; $("acceptBtn").textContent = "Try again"; $("err").textContent = r.error.message; $("err").hidden = false; return; }
     done(name, new Date(), true);
   };
 })();

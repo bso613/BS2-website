@@ -184,7 +184,7 @@ const STAGES = [
   { id: "lead",      name: "new lead",    hint: "Intake form or booking came in." },
   { id: "call",      name: "30-min call", hint: "Call booked. Onboarding starts here." },
   { id: "quote",     name: "quote",       hint: "Quote sent, waiting on a yes." },
-  { id: "agreement", name: "agreement",   hint: "Quote accepted, agreement out to sign." },
+  { id: "agreement", name: "agreement",   hint: "Accepted and signed, waiting on the first payment." },
   { id: "client",    name: "client",      hint: "Signed. Portal account created." },
 ];
 // Call questions, grouped. ★ = ask first if time runs short. Keep the ids: answers are saved under them.
@@ -349,7 +349,7 @@ function renderRecord() {
   if (!l) { rec.hidden = true; return; }
   rec.hidden = false;
   const at = idx(l.stage), next = STAGES[at + 1];
-  const nextLabel = { call: "Log the 30-min call", quote: "Email quote", agreement: "Quote accepted: send agreement", client: "Agreement signed: make client" }[next?.id];
+  const nextLabel = { call: "Log the 30-min call", quote: "Email quote", agreement: "Quote accepted: send agreement", client: "Paid: make client" }[next?.id];
   rec.innerHTML = `
     <div class="rhead">
       <div><h2>${esc(l.name || l.business || "No name")}</h2><p>${[l.name && l.business ? esc(l.business) : "", l.email ? `<span class="mono">${esc(l.email)}</span>` : "", hrsOf(l) || l.hours_budget ? `<span class="mono" style="color:var(--accent)">⏱ ${fmtH(hrsOf(l))} logged${l.hours_budget ? " of " + fmtH(+l.hours_budget) : ""}</span>` : ""].filter(Boolean).join(" · ")}</p></div>

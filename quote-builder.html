@@ -475,7 +475,7 @@ function openCompose() {
   const q = LEAD.quote || {};
   $("cTo").textContent = (LEAD.name ? LEAD.name + " · " : "") + LEAD.email;
   $("cSubj").value = (q.sent_at ? "Updated quote" : "Your quote") + " from BS2 (" + $("qnum").value + ")";
-  $("cMsg").value = `Hi ${first},\n\nThanks for taking the time to talk. Here's ${q.sent_at ? "the updated" : "your"} quote${$("project").value ? " for " + $("project").value.toLowerCase() : ""}. It lays out the setup, the monthly plan and the tools you'd own, with their costs.\n\nIf it looks good, you can accept it right from the page and I'll send the service agreement next. Any questions, just reply here.\n\nBen\nBS2`;
+  $("cMsg").value = `Hi ${first},\n\nThanks for taking the time to talk. Here's ${q.sent_at ? "the updated" : "your"} quote${$("project").value ? " for " + $("project").value.toLowerCase() : ""}. It lays out the setup, the monthly plan and the tools you'd own, with their costs.\n\nIf it looks good, you can accept it right from the page. The payment terms are spelled out there, and you can pay the deposit in the same step. Any questions, just reply here.\n\nBen\nBS2`;
   $("compose").hidden = false; $("cMsg").focus();
 }
 async function sendQuote() {
