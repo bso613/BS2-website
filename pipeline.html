@@ -399,8 +399,9 @@ function pane(l, at) {
           <div class="row"><button class="btn solid" id="fillTx" type="button">Fill answers →</button><label class="btn" style="cursor:pointer">or pick a file<input type="file" id="txFile" accept=".txt,.vtt,.sbv,.srt,.md,text/plain" hidden></label></div>
           <p class="note">Fills the empty answers, adds to the ones you already wrote, and writes a call summary plus anything else that came up. Edit anything after; it saves as you type.</p>
         </details>
-        ${["_summary", "_extra"].some(k => ((l.answers || {})[k] || "").trim()) ? `<h4 class="grp">From the call</h4>
+        ${["_summary", "_actions", "_extra"].some(k => ((l.answers || {})[k] || "").trim()) ? `<h4 class="grp">From the call</h4>
         <div class="q"><label for="qa_summary">Summary</label><textarea id="qa_summary" data-q="_summary" rows="4">${esc((l.answers || {})._summary)}</textarea></div>
+        <div class="q"><label for="qa_actions">Who agreed to do what</label><textarea id="qa_actions" data-q="_actions" rows="4" placeholder="No commitments on the call">${esc((l.answers || {})._actions)}</textarea></div>
         <div class="q"><label for="qa_extra">Also came up (not in the questions)</label><textarea id="qa_extra" data-q="_extra" rows="5" placeholder="Nothing else came up">${esc((l.answers || {})._extra)}</textarea></div>` : ""}
         ${ONBOARD.map(g => `<h4 class="grp">${esc(g.h)}</h4>` + g.qs.map(q => `<div class="q"><label for="qa${q.id}">${q.star ? '<span class="star">★</span> ' : ""}${esc(q.q)}${(MISSING[l.id] || []).includes(q.id) ? '<span class="miss">· not covered on the call</span>' : ""}</label>${q.note ? `<p class="qnote">${esc(q.note)}</p>` : ""}<textarea id="qa${q.id}" data-q="${q.id}" placeholder="Notes from the call">${esc((l.answers || {})[q.id])}</textarea></div>`).join("")).join("")}
       </div>
@@ -541,10 +542,12 @@ document.addEventListener("click", async e => {
     if (data.summary) { answers._summary = data.summary; n++; }
     const extra = (data.extras || []).map(x => "• " + x.topic + " → " + x.note).join("\n");
     if (extra) answers._extra = (answers._extra || "").trim() ? answers._extra.trim() + "\n" + extra : extra;
+    const acts = (data.actions || []).map(x => "☐ " + x.who + ": " + x.action + (x.due ? " (by " + x.due + ")" : "")).join("\n");
+    if (acts) answers._actions = (answers._actions || "").trim() ? answers._actions.trim() + "\n" + acts : acts;
     l.answers = answers; MISSING[l.id] = miss;
-    const ex = (data.extras || []).length, filled = n - (data.summary ? 1 : 0);
-    await save(l, { answers }); await logEvent(l, "BS2", `Filled ${filled} onboarding answer${filled === 1 ? "" : "s"} from the call transcript${data.summary ? ", with a call summary" : ""}${ex ? " and " + ex + " other thing" + (ex === 1 ? "" : "s") + " that came up" : ""}.`);
-    renderRecord(); toast(`Filled ${filled} answer${filled === 1 ? "" : "s"}${data.summary ? " and the summary" : ""}.${ex ? " " + ex + " other thing" + (ex === 1 ? "" : "s") + " came up (see From the call)." : ""}${miss.length ? " " + miss.length + " not covered (orange)." : ""}`);
+    const ac = (data.actions || []).length, ex = (data.extras || []).length, filled = n - (data.summary ? 1 : 0);
+    await save(l, { answers }); await logEvent(l, "BS2", `Filled ${filled} onboarding answer${filled === 1 ? "" : "s"} from the call transcript${data.summary ? ", with a call summary" : ""}${ac ? ", " + ac + " action item" + (ac === 1 ? "" : "s") : ""}${ex ? " and " + ex + " other thing" + (ex === 1 ? "" : "s") + " that came up" : ""}.`);
+    renderRecord(); toast(`Filled ${filled} answer${filled === 1 ? "" : "s"}${data.summary ? " and the summary" : ""}.${ac ? " " + ac + " action item" + (ac === 1 ? "" : "s") + "." : ""}${ex ? " " + ex + " other thing" + (ex === 1 ? "" : "s") + " came up (see From the call)." : ""}${miss.length ? " " + miss.length + " not covered (orange)." : ""}`);
   }
   if (id === "del") {
     const b = e.target;
