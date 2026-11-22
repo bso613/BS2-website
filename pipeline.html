@@ -366,6 +366,7 @@ function renderRecord() {
         ${next ? `<button class="btn solid" id="advance" type="button">${nextLabel} →</button>` : finishBtn(l)}
         ${at > 0 ? `<button class="btn" id="back" type="button">← Back a stage</button>` : ""}
         <button class="btn" id="lost" type="button">Mark lost</button>
+        <button class="btn" id="del" type="button" title="Deletes the lead, its timeline and their portal login. Stripe records stay.">Delete</button>
       </div>
     </div>
     <div id="callPick" hidden class="row"><label class="note" for="callAt">When was or is the call? Nothing is sent to them.</label><input type="datetime-local" id="callAt" style="max-width:240px"><button class="btn solid" id="confirmCall" type="button">Save call</button></div>
@@ -507,6 +508,17 @@ document.addEventListener("click", async e => {
     if (e.target.dataset.armed !== "1") { e.target.dataset.armed = "1"; e.target.textContent = "Click again to confirm"; return; }
     await save(l, { stage: "lost" }); await logEvent(l, "Ben", "Marked as lost.");
     LEADS = LEADS.filter(x => x.id !== l.id); sel = LEADS[0]?.id || null; render(); toast("Marked as lost. It's kept in Supabase for your records.");
+  }
+  if (id === "del") {
+    const b = e.target;
+    if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Click again: delete forever"; b.style.color = "var(--warn)"; return; }
+    b.disabled = true; b.textContent = "Deleting…";
+    const { data, error } = await sb.functions.invoke("delete-lead", { body: { lead_id: l.id } });
+    let msg = data?.error;
+    if (error && !msg) { try { msg = (await error.context.json()).error; } catch { msg = "The delete-lead function isn't set up yet in Supabase."; } }
+    if (msg) { b.disabled = false; b.dataset.armed = ""; b.style.color = ""; b.textContent = "Delete"; toast(msg, true); return; }
+    LEADS = LEADS.filter(x => x.id !== l.id); delete EVENTS[l.id]; sel = LEADS[0]?.id || null; render();
+    toast("Deleted" + (data.login ? ", including their portal login." : ".") + " Stripe records stay in Stripe.");
   }
   if (id === "addmsg") {
     const hv = parseFloat($("newhrs").value) || 0;
