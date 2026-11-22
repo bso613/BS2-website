@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ben Smith · BS²</title>
+<meta name="description" content="Ben Smith, BS² Business Solutions. Websites, data and AI for small businesses in Ottawa.">
+<meta property="og:title" content="Ben Smith · BS²">
+<meta property="og:description" content="Your BS, squared away. Websites, data and AI for small business.">
+<meta property="og:image" content="https://www.bs2.ca/img/bs2-card.png">
+<meta name="theme-color" content="#0c0f14">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0c0f14; --surface:#11151c; --surface-2:#171c25; --line:#232a35; --text:#e8ecf2; --muted:#a7b0bf; --faint:#8a94a5; --accent:#7ee0c3; --on-accent:#0c0f14; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; background:var(--bg); color:var(--text); font-family:'Space Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; display:flex; justify-content:center; padding:32px 16px; }
+  .mono { font-family:'JetBrains Mono',ui-monospace,monospace; }
+  main { width:100%; max-width:400px; display:flex; flex-direction:column; gap:22px; }
+  .top { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--faint); }
+  .logo { font-weight:700; font-size:22px; color:var(--text); text-decoration:none; font-family:'Space Grotesk',sans-serif; }
+  .logo sup { font-size:13px; color:var(--accent); }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:28px; display:flex; flex-direction:column; gap:18px; position:relative; overflow:hidden; }
+  .card::before { content:""; position:absolute; inset:0 0 auto 0; height:3px; background:var(--accent); }
+  .who { display:flex; gap:16px; align-items:center; }
+  .photo { width:84px; height:84px; border-radius:12px; object-fit:cover; border:1px solid var(--line); flex:none; }
+  h1 { margin:0; font-size:30px; letter-spacing:-.8px; line-height:1.05; }
+  .role { margin:6px 0 0; font-size:12px; color:var(--accent); }
+  .tag { margin:0; font-size:22px; font-weight:500; letter-spacing:-.4px; }
+  .what { margin:0; color:var(--muted); line-height:1.5; font-size:15px; }
+  .btns { display:flex; flex-direction:column; gap:10px; }
+  .btn { display:flex; align-items:center; justify-content:space-between; gap:12px; text-decoration:none; padding:15px 18px; border-radius:10px; font-weight:700; font-size:16px; border:1px solid #3a4352; color:var(--text); background:transparent; font-family:inherit; cursor:pointer; width:100%; }
+  .btn span.mono { font-weight:400; font-size:12px; color:var(--faint); }
+  .btn:hover { border-color:var(--accent); }
+  .btn.solid { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  .btn.solid span.mono { color:var(--on-accent); opacity:.7; }
+  .qrbox { display:flex; gap:18px; align-items:center; background:var(--surface-2); border:1px solid var(--line); border-radius:12px; padding:16px; }
+  .qrwrap { background:#fff; border-radius:8px; padding:8px; flex:none; }
+  .qr { width:96px; height:96px; display:block; }
+  .qrbox p { margin:0; font-size:13px; color:var(--muted); line-height:1.5; }
+  .qrbox b { color:var(--text); display:block; font-size:15px; margin-bottom:2px; }
+  footer { text-align:center; font-size:12px; color:var(--faint); }
+  footer a { color:var(--faint); }
+</style>
+</head>
+<body>
+<main>
+  <div class="top"><a class="logo" href="./">BS<sup>2</sup></a><span class="mono">// business card</span></div>
+
+  <section class="card">
+    <div class="who">
+      <img class="photo" src="img/ben.jpg" alt="Ben Smith">
+      <div>
+        <h1>Ben Smith</h1>
+        <p class="role mono">founder · ottawa, on</p>
+      </div>
+    </div>
+    <p class="tag">Your BS, squared away.</p>
+    <p class="what">Websites, data integrations and AI tools for small businesses. You run the business, I handle the admin tech.</p>
+    <div class="btns">
+      <a class="btn solid" href="ben-smith.vcf" download="Ben Smith - BS2.vcf">Save my contact <span class="mono">.vcf</span></a>
+      <a class="btn" href="https://calendly.com/ben-a-smith-613/30min" target="_blank" rel="noopener">Book a free call <span class="mono">30 min</span></a>
+      <a class="btn" href="mailto:ben@bs2.ca">Email <span class="mono">ben@bs2.ca</span></a>
+      <a class="btn" href="./">Website <span class="mono">bs2.ca</span></a>
+    </div>
+  </section>
+
+  <section class="qrbox">
+    <div class="qrwrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" class="qr" role="img" aria-label="QR code for www.bs2.ca/card"><path class="qrline" stroke="#0c0f14" d="M0 0.5h7m3 0h2m2 0h2m2 0h7m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h2m1 0h2m1 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h2m1 0h1m2 0h2m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m5 0h1m2 0h1m2 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h4m1 0h3m2 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m4 0h2m1 0h2m2 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-16 1h1m2 0h3m1 0h1m-17 1h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m1 0h2m3 0h1m2 0h1m-24 1h1m1 0h1m2 0h1m1 0h4m1 0h2m4 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h3m1 0h2m1 0h4m2 0h3m-25 1h1m2 0h2m2 0h2m1 0h5m3 0h1m4 0h1m-22 1h1m2 0h3m3 0h1m1 0h1m3 0h3m1 0h1m1 0h2m-24 1h1m1 0h2m2 0h2m1 0h2m1 0h1m4 0h1m2 0h1m2 0h1m-25 1h1m5 0h2m6 0h1m2 0h3m2 0h3m-24 1h1m1 0h3m2 0h2m1 0h1m1 0h2m3 0h1m1 0h1m2 0h1m-24 1h1m1 0h2m2 0h2m1 0h2m1 0h2m2 0h6m-14 1h2m1 0h4m1 0h1m3 0h2m1 0h2m-25 1h7m2 0h1m1 0h6m1 0h1m1 0h2m1 0h2m-25 1h1m5 0h1m2 0h1m2 0h2m2 0h1m3 0h2m2 0h1m-25 1h1m1 0h3m1 0h1m1 0h6m2 0h6m1 0h2m-25 1h1m1 0h3m1 0h1m4 0h1m1 0h1m1 0h3m1 0h4m-23 1h1m1 0h3m1 0h1m1 0h2m2 0h1m3 0h1m3 0h1m3 0h1m-25 1h1m5 0h1m2 0h3m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-24 1h7m1 0h1m1 0h1m1 0h1m1 0h3m2 0h1m3 0h2"/></svg></div>
+    <p><b>Scan to share</b>Point a phone camera here to open this card.</p>
+  </section>
+  <button class="btn" id="share" type="button">Share this card <span class="mono">↗</span></button>
+
+  <footer class="mono"><a href="./">www.bs2.ca</a></footer>
+</main>
+<script>
+  const shareBtn = document.getElementById('share');
+  const url = 'https://www.bs2.ca/card';
+  shareBtn.addEventListener('click', async () => {
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Ben Smith · BS²', text: 'Your BS, squared away.', url }); return; }
+      await navigator.clipboard.writeText(url);
+      shareBtn.firstChild.textContent = 'Link copied ';
+      setTimeout(() => shareBtn.firstChild.textContent = 'Share this card ', 2000);
+    } catch (e) {}
+  });
+</script>
+</body>
+</html>
