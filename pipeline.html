@@ -105,6 +105,11 @@
   textarea { min-height: 64px; resize: vertical; }
   .grp { font-size: 15px; font-weight: 500; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
   .star { color: var(--accent); }
+  .tx { border: 1px dashed var(--line-2); border-radius: 10px; padding: 10px 12px; margin: 6px 0 4px; }
+  .tx summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  .tx textarea { min-height: 120px; margin: 10px 0 8px; width: 100%; }
+  .tx .row { align-items: center; }
+  .miss { color: var(--warn); font-size: 12px; margin-left: 6px; }
   .qnote { font-size: 12px; color: var(--faint); line-height: 1.5; border-left: 2px solid var(--line-2); padding-left: 10px; margin: 0; }
   select, input[type=date], input[type=datetime-local] { font: inherit; font-size: 14px; color: var(--text); background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; width: 100%; color-scheme: dark; }
   .opts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -282,7 +287,7 @@ function qMoney(q) {
   return { maint, fee, spread: q.spread ? (+q.setup || 0) * (1 + fee / 100) / 12 : 0 };
 }
 
-let LEADS = [], EVENTS = {}, sel = null, tab = "intake";
+let LEADS = [], EVENTS = {}, sel = null, tab = "intake", MISSING = {};
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 const money = n => "$" + (+n || 0).toLocaleString("en-CA", Number.isInteger(+n || 0) ? { maximumFractionDigits: 0 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -389,7 +394,12 @@ function pane(l, at) {
     <div class="two">
       <div class="pane"><h4 class="mono" style="font-size:13px;color:var(--accent);font-weight:500">call questions</h4>
         <p class="note">★ ask first if time runs short · ${ONBOARD.flatMap(g => g.qs).filter(q => ((l.answers || {})[q.id] || "").trim()).length} of ${ONBOARD.flatMap(g => g.qs).length} answered</p>
-        ${ONBOARD.map(g => `<h4 class="grp">${esc(g.h)}</h4>` + g.qs.map(q => `<div class="q"><label for="qa${q.id}">${q.star ? '<span class="star">★</span> ' : ""}${esc(q.q)}</label>${q.note ? `<p class="qnote">${esc(q.note)}</p>` : ""}<textarea id="qa${q.id}" data-q="${q.id}" placeholder="Notes from the call">${esc((l.answers || {})[q.id])}</textarea></div>`).join("")).join("")}
+        <details class="tx" ${ONBOARD.flatMap(g => g.qs).some(q => ((l.answers || {})[q.id] || "").trim()) ? "" : "open"}><summary>✦ Fill from the call transcript</summary>
+          <textarea id="txIn" placeholder="Paste the Google Meet transcript here (open it in Google Docs, select all, copy)"></textarea>
+          <div class="row"><button class="btn solid" id="fillTx" type="button">Fill answers →</button><label class="btn" style="cursor:pointer">or pick a file<input type="file" id="txFile" accept=".txt,.vtt,.sbv,.srt,.md,text/plain" hidden></label></div>
+          <p class="note">Fills the empty answers and adds to the ones you already wrote. Edit anything after; it saves as you type.</p>
+        </details>
+        ${ONBOARD.map(g => `<h4 class="grp">${esc(g.h)}</h4>` + g.qs.map(q => `<div class="q"><label for="qa${q.id}">${q.star ? '<span class="star">★</span> ' : ""}${esc(q.q)}${(MISSING[l.id] || []).includes(q.id) ? '<span class="miss">· not covered on the call</span>' : ""}</label>${q.note ? `<p class="qnote">${esc(q.note)}</p>` : ""}<textarea id="qa${q.id}" data-q="${q.id}" placeholder="Notes from the call">${esc((l.answers || {})[q.id])}</textarea></div>`).join("")).join("")}
       </div>
       <div class="pane"><h4 class="mono" style="font-size:13px;color:var(--accent);font-weight:500">after the call</h4>
         ${ONBOARD_TASKS.map((t, i) => `<label class="check ${(l.checks || {})[i] ? "donecheck" : ""}"><input type="checkbox" data-c="${i}" ${(l.checks || {})[i] ? "checked" : ""}><span>${esc(t)}</span></label>`).join("")}
@@ -509,6 +519,26 @@ document.addEventListener("click", async e => {
     await save(l, { stage: "lost" }); await logEvent(l, "Ben", "Marked as lost.");
     LEADS = LEADS.filter(x => x.id !== l.id); sel = LEADS[0]?.id || null; render(); toast("Marked as lost. It's kept in Supabase for your records.");
   }
+  if (id === "fillTx") {
+    const b = e.target, tx = $("txIn").value.trim();
+    if (tx.length < 200) { toast("Paste the whole transcript first.", true); return; }
+    b.disabled = true; b.textContent = "Reading the call… (about 30 seconds)";
+    const questions = ONBOARD.flatMap(g => g.qs).map(q => ({ id: q.id, q: q.q }));
+    const { data, error } = await sb.functions.invoke("fill-onboarding", { body: { lead_id: l.id, transcript: tx, questions } });
+    let msg = data?.error;
+    if (error && !msg) { try { msg = (await error.context.json()).error; } catch { msg = "The fill-onboarding function isn't set up yet in Supabase."; } }
+    if (msg) { b.disabled = false; b.textContent = "Fill answers →"; toast(msg, true); return; }
+    const answers = { ...(l.answers || {}) }; let n = 0; const miss = [];
+    for (const q of questions) {
+      const a = (data.answers[q.id] || "").trim(), had = (answers[q.id] || "").trim();
+      if (!a) { if (!had) miss.push(q.id); continue; }
+      if (had.includes(a)) continue;
+      answers[q.id] = had ? had + "\n\nFrom the call: " + a : a; n++;
+    }
+    l.answers = answers; MISSING[l.id] = miss;
+    await save(l, { answers }); await logEvent(l, "BS2", `Filled ${n} onboarding answer${n === 1 ? "" : "s"} from the call transcript.`);
+    renderRecord(); toast(`Filled ${n} answer${n === 1 ? "" : "s"}.${miss.length ? " " + miss.length + " weren't covered on the call (marked in orange)." : ""}`);
+  }
   if (id === "del") {
     const b = e.target;
     if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Click again: delete forever"; b.style.color = "var(--warn)"; return; }
@@ -565,6 +595,7 @@ document.addEventListener("input", e => {
   }
 });
 document.addEventListener("change", async e => {
+  if (e.target.id === "txFile" && e.target.files[0]) { const f = e.target.files[0]; if (f.size > 2e6) { toast("That file is too big for a transcript.", true); return; } $("txIn").value = await f.text(); return; }
   if (e.target.dataset.qf === "plan") e.target.dispatchEvent(new Event("input", { bubbles: true }));
   const l = lead(); if (!l) return;
   if (e.target.dataset.ehid) {
