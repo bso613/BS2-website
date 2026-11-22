@@ -109,6 +109,22 @@
   .row2 .x { font: inherit; background: none; border: 0; color: var(--faint); cursor: pointer; padding: 0 0 0 8px; }
   .row2 .x:hover { color: var(--warn); }
   .sub { color: var(--faint); font-size: 12px; }
+  .kpi .alt { font-size: 12px; color: var(--accent); }
+  .row2.proj { opacity: .75; font-style: italic; }
+  .row2.proj .d::after { content: " ?"; }
+  .tag { font-size: 11px; border: 1px solid var(--line-2, #3a4352); border-radius: 999px; padding: 1px 7px; color: var(--faint); font-style: normal; margin-left: 6px; }
+  .phead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .phead select { font: inherit; font-size: 13px; color: var(--text); background: var(--surface-2); border: 1px solid #3a4352; border-radius: 8px; padding: 6px 8px; color-scheme: dark; }
+  .pnums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .pnums div { display: flex; flex-direction: column; gap: 4px; }
+  .pnums .v { font-size: 22px; font-weight: 700; }
+  @media (max-width: 600px) { .pnums .v { font-size: 17px; } }
+  .ledger summary { cursor: pointer; font-size: 13px; color: var(--accent); }
+  .deal { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .deal input { margin-top: 3px; accent-color: #7ee0c3; }
+  .deal .sub { display: block; margin-top: 2px; }
+  .impact { border: 1px dashed var(--line-2, #3a4352); border-radius: 10px; padding: 12px; font-size: 14px; display: grid; gap: 6px; }
+  .impact b { font-weight: 600; }
   .addexp { display: grid; grid-template-columns: 1fr 1fr 1.3fr auto; gap: 8px; margin-top: 6px; }
   .addexp #eName { grid-column: 1 / -1; }
   @media (max-width: 600px) { .addexp { grid-template-columns: 1fr 1fr; } }
@@ -201,22 +217,34 @@
         <div class="apane" id="pPipe" style="margin-top:20px"><iframe data-src="pipeline.html?embed=1" title="Sales pipeline"></iframe></div>
         <div class="apane" id="pMoney" style="margin-top:20px" hidden>
           <div class="kpis">
-            <div class="kpi"><span class="k mono">coming in · next 90 days</span><span class="v in" id="kIn">$0</span></div>
+            <div class="kpi"><span class="k mono">coming in · next 90 days</span><span class="v in" id="kIn">$0</span><span class="alt" id="kInAlt"></span></div>
             <div class="kpi"><span class="k mono">going out · next 90 days</span><span class="v out" id="kOut">$0</span></div>
-            <div class="kpi"><span class="k mono">net · next 90 days</span><span class="v" id="kNet">$0</span></div>
-            <div class="kpi"><span class="k mono">monthly recurring</span><span class="v" id="kMrr">$0</span><span class="sub" id="kMrrSub"></span></div>
+            <div class="kpi"><span class="k mono">net · next 90 days</span><span class="v" id="kNet">$0</span><span class="alt" id="kNetAlt"></span></div>
+            <div class="kpi"><span class="k mono">monthly recurring</span><span class="v" id="kMrr">$0</span><span class="sub" id="kMrrSub"></span><span class="alt" id="kMrrAlt"></span></div>
             <div class="kpi"><span class="k mono">claude api credit left</span><span class="v" id="kAi">…</span><span class="sub" id="kAiSub"></span></div>
           </div>
           <div class="mgrid">
-            <div class="card2"><h3>Next 90 days</h3><div id="upcoming"></div></div>
             <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
-              <div class="card2"><h3>If your open deals sign</h3><div id="pending"></div></div>
+              <div class="card2">
+                <div class="phead"><h3>Profit</h3><select id="fy" aria-label="Fiscal year"></select></div>
+                <div class="pnums">
+                  <div><span class="sub mono">money in</span><span class="v in" id="pIn">$0</span></div>
+                  <div><span class="sub mono">money out</span><span class="v out" id="pOut">$0</span></div>
+                  <div><span class="sub mono">profit</span><span class="v" id="pNet">$0</span></div>
+                </div>
+                <details class="ledger"><summary id="ledgerSum">What's been paid</summary><div id="ledger"></div></details>
+                <p class="sub">Your fiscal year is the calendar year (sole proprietor). Stripe fees aren't counted yet.</p>
+              </div>
+              <div class="card2"><h3>Next 90 days</h3><div id="upcoming"></div></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+              <div class="card2"><h3>Quotes out for approval</h3><div id="pending"></div></div>
               <div class="card2"><h3>Your expenses</h3><div id="expList"></div>
                 <form class="addexp" id="expForm">
                   <input id="eName" placeholder="Name, e.g. Insurance" required aria-label="Expense name">
                   <input id="eAmt" placeholder="$ amount" inputmode="decimal" required aria-label="Amount">
                   <select id="eEvery" aria-label="How often"><option value="month">monthly</option><option value="year">yearly</option><option value="once">once</option></select>
-                  <input id="eDue" type="date" required aria-label="Next due date">
+                  <input id="eDue" type="date" required aria-label="First payment date" title="First payment date (past is fine)">
                   <button class="btn btn-solid" type="submit">Add</button>
                 </form>
               </div>
@@ -370,42 +398,117 @@
     $("kAi").className = "v " + (left < 1 ? "out" : "");
     $("kAiSub").textContent = `${u.data.length} transcript${u.data.length === 1 ? "" : "s"} read · about US$${(u.data.length ? spent / u.data.length : 0.05).toFixed(2)} each${left < 1 ? " · top up soon" : ""}`;
   }
+  // Every dated money event: what's been paid (d <= today) and what's coming (d > today).
+  const INCEPTION = new Date(2026, 10, 16); // BS2 registered Nov 16, 2026
+  let PICK = new Set(); // open deals ticked "if they sign"
+  const nm = l => l.business || l.name || "Client";
+  function occurrences(start, every, until) { // dates from start, monthly/yearly, up to `until`
+    const out = [], step = every === "year" ? 12 : 1;
+    if (every === "once") return start <= until ? [start] : [];
+    for (let n = 0; n < 600; n++) { const d = addMonths(start, n * step); if (d > until) break; out.push(d); }
+    return out;
+  }
+  function moneyEvents(until) {
+    const ev = [];
+    for (const x of EXP) {
+      const st = day0((x.start_date || x.next_due) + "T00:00");
+      for (const d of occurrences(st, x.every, until)) ev.push({ d, amt: -x.amount, name: x.name, kind: "out" });
+    }
+    for (const l of LEADS) {
+      const q = l.quote || {};
+      for (const ph of ["deposit", "final"]) {
+        const r = q[ph]; if (!r || !r.paid_at) continue;
+        const paid = day0(r.paid_at), once = (r.once ?? r.cents ?? 0) / 100, mo = (r.monthly || 0) / 100;
+        if (once) ev.push({ d: paid, amt: once, name: nm(l) + " · " + (ph === "deposit" ? "setup deposit" : "rest of setup"), kind: "in" });
+        if (mo) for (const d of occurrences(paid, "month", until)) ev.push({ d, amt: mo, name: nm(l) + " · monthly plan", kind: "in" });
+      }
+    }
+    return ev;
+  }
+  // What an open quote would bring if signed. Assumes the deposit lands in a week and delivery in about 6 weeks.
+  function dealEvents(l, until) {
+    const q = l.quote || {}, today = day0(new Date()), setup = +q.setup || 0, mo = +q.monthly || 0, ev = [];
+    const pay = new Date(today); pay.setDate(pay.getDate() + 7);
+    const live = new Date(today); live.setDate(live.getDate() + 45);
+    if (q.spread) { for (const d of occurrences(pay, "month", until)) ev.push({ d, amt: mo, name: nm(l) + " · monthly plan", kind: "in", proj: true }); return ev; }
+    if (setup) ev.push({ d: pay, amt: Math.round(setup * 50) / 100, name: nm(l) + " · 50% deposit", kind: "in", proj: true });
+    if (setup && live <= until) ev.push({ d: live, amt: setup - Math.round(setup * 50) / 100, name: nm(l) + " · rest of setup", kind: "in", proj: true });
+    if (mo) for (const d of occurrences(live, "month", until)) ev.push({ d, amt: mo, name: nm(l) + " · monthly plan", kind: "in", proj: true });
+    return ev;
+  }
+  const openDeals = () => LEADS.filter(l => l.quote && (l.quote.sent_at || l.quote.sent) && !l.quote.deposit?.paid_at && l.stage !== "client");
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
+  const row = i => `<div class="row2${i.proj ? " proj" : ""}"><span class="d mono">${fmtD(i.d)}</span><span>${escH(i.name)}${i.proj ? '<span class="tag">if signed</span>' : ""}</span><span class="mono ${i.kind}">${i.amt > 0 ? "+" : "-"}${cad2(Math.abs(i.amt))}</span></div>`;
   function renderMoney() {
     const today = day0(new Date()), end = addMonths(today, 3);
-    const items = [];
-    let mrr = 0, mrrNote = 0, undated = 0;
-    for (const l of LEADS.filter(x => x.stage === "client" && x.quote)) {
-      const q = l.quote, plan = q.maint != null ? +q.maint : PLANS[q.plan || "Plus"] || 0, setup = +q.setup || 0;
-      const start = day0(l.agreement?.signed_at || l.updated_at || l.created_at);
-      const spread = q.spread ? setup * (1 + (q.planfee != null ? +q.planfee : 10) / 100) / 12 : 0;
-      mrr += plan; if (q.spread && addMonths(start, 12) > today) { mrr += spread; mrrNote += spread; }
-      for (let n = 0; n < 240; n++) {
-        const d = addMonths(start, n); if (d > end) break; if (d < today) continue;
-        items.push({ d, amt: plan + (n < 12 ? spread : 0), name: (l.business || l.name) + " · " + (q.plan || "Plus") + (q.spread && n < 12 ? " + setup " + (n + 1) + "/12" : ""), kind: "in" });
-      }
-      if (!q.spread && setup) undated += setup / 2;
-    }
-    for (const x of EXP) {
-      let d = day0(x.next_due + "T00:00");
-      if (x.every === "once") { if (d >= today && d <= end) items.push({ d, amt: -x.amount, name: x.name, kind: "out" }); continue; }
-      const step = x.every === "year" ? 12 : 1;
-      for (let n = 0; n < 500; n++) { const dd = addMonths(d, n * step); if (dd > end) break; if (dd >= today) items.push({ d: dd, amt: -x.amount, name: x.name, kind: "out" }); }
-    }
-    items.sort((a, b) => a.d - b.d);
-    const inn = items.filter(i => i.amt > 0).reduce((s, i) => s + i.amt, 0), out = -items.filter(i => i.amt < 0).reduce((s, i) => s + i.amt, 0);
+    const all = moneyEvents(end);
+    const past = all.filter(i => i.d <= today), next = all.filter(i => i.d > today);
+    const deals = openDeals(); PICK = new Set([...PICK].filter(id => deals.some(l => l.id === id)));
+    const proj = deals.filter(l => PICK.has(l.id)).flatMap(l => dealEvents(l, end));
+
+    // 90-day KPIs, and what they'd be if the ticked deals sign.
+    const inn = sum(next.filter(i => i.amt > 0), i => i.amt), out = -sum(next.filter(i => i.amt < 0), i => i.amt);
+    const pin = sum(proj, i => i.amt);
     $("kIn").textContent = cad(inn); $("kOut").textContent = cad(out); $("kNet").textContent = cad(inn - out);
     $("kNet").className = "v " + (inn - out >= 0 ? "in" : "out");
-    $("kMrr").textContent = cad(mrr); $("kMrrSub").textContent = mrrNote ? "includes " + cad(mrrNote) + " of setup payment plans" : "";
-    $("upcoming").innerHTML = (items.length ? items.map(i => `<div class="row2"><span class="d mono">${fmtD(i.d)}</span><span>${escH(i.name)}</span><span class="mono ${i.kind}">${i.amt > 0 ? "+" : "-"}${cad2(Math.abs(i.amt))}</span></div>`).join("") : '<p class="sub">Nothing yet. Clients show up here once they reach the client stage with a quote, and your expenses once you add them.</p>')
-      + (undated ? `<div class="row2"><span class="d mono">on delivery</span><span>Setup balances still owed</span><span class="mono in">+${cad2(undated)}</span></div>` : "");
-    const open = LEADS.filter(x => x.stage !== "client" && x.quote);
-    $("pending").innerHTML = open.length ? open.map(l => { const q = l.quote; return `<div class="row2"><span class="d mono">${l.stage}</span><span>${escH(l.business || l.name)}</span><span class="mono sub">${cad(+q.setup || 0)} + ${cad(q.maint != null ? +q.maint : PLANS[q.plan || "Plus"] || 0)}/mo</span></div>`; }).join("")
-      + `<p class="sub">Up to ${cad(open.reduce((s, l) => s + (l.quote.maint != null ? +l.quote.maint : PLANS[l.quote.plan || "Plus"] || 0), 0))}/mo more if they all sign.</p>` : '<p class="sub">No open quotes right now.</p>';
-    $("expList").innerHTML = EXP.length ? EXP.map(x => `<div class="row2"><span class="d mono">${x.every === "once" ? "once" : x.every + "ly"}</span><span>${escH(x.name)} <span class="sub">next ${fmtD(day0(x.next_due + "T00:00"))}</span></span><span class="mono out">${cad2(x.amount)}<button class="x" data-del="${x.id}" title="Remove" aria-label="Remove ${escH(x.name)}">×</button></span></div>`).join("") : '<p class="sub">Add your bills below, like insurance or your domain.</p>';
+    $("kInAlt").textContent = proj.length ? "→ " + cad(inn + pin) + " if they sign" : "";
+    $("kNetAlt").textContent = proj.length ? "→ " + cad(inn + pin - out) + " if they sign" : "";
+
+    // Monthly recurring: active subscriptions from paid phases.
+    let mrr = 0, plan = 0;
+    for (const l of LEADS) { const q = l.quote || {}; for (const ph of ["deposit", "final"]) { const r = q[ph]; if (r?.paid_at && r.monthly) { mrr += r.monthly / 100; if (q.spread) plan += r.monthly / 100; } } }
+    const bills = sum(EXP.filter(x => x.every === "month"), x => +x.amount) + sum(EXP.filter(x => x.every === "year"), x => x.amount / 12);
+    const pmrr = sum(deals.filter(l => PICK.has(l.id)), l => +l.quote.monthly || 0);
+    $("kMrr").textContent = cad(mrr); $("kMrrSub").textContent = plan ? "includes " + cad(plan) + " on setup payment plans" : "";
+    $("kMrrAlt").textContent = pmrr ? "→ " + cad(mrr + pmrr) + "/mo if they sign" : "";
+
+    // Profit by fiscal year (calendar year), from what's actually been paid.
+    const years = []; for (let y = INCEPTION.getFullYear(); y <= today.getFullYear(); y++) years.push(y);
+    const fy = $("fy"), keep = fy.value || "all";
+    fy.innerHTML = `<option value="all">Since Nov 16, 2026</option>` + years.slice().reverse().map(y => `<option value="${y}">${y}</option>`).join("");
+    fy.value = [...fy.options].some(o => o.value === keep) ? keep : "all";
+    const inFy = i => fy.value === "all" || i.d.getFullYear() === +fy.value;
+    const paid = past.filter(inFy).sort((a, b) => b.d - a.d);
+    const pIn = sum(paid.filter(i => i.amt > 0), i => i.amt), pOut = -sum(paid.filter(i => i.amt < 0), i => i.amt);
+    $("pIn").textContent = cad2(pIn); $("pOut").textContent = cad2(pOut); $("pNet").textContent = (pIn - pOut < 0 ? "-" : "") + cad2(Math.abs(pIn - pOut));
+    $("pNet").className = "v " + (pIn - pOut >= 0 ? "in" : "out");
+    $("ledgerSum").textContent = `What's been paid (${paid.length})`;
+    $("ledger").innerHTML = paid.length ? paid.map(row).join("") : '<p class="sub">Nothing paid in this period.</p>';
+
+    // Next 90 days: only what's still to come, plus ticked deals in italics.
+    const up = next.concat(proj).sort((a, b) => a.d - b.d);
+    const owed = LEADS.filter(l => l.quote?.deposit?.paid_at && !l.quote.final?.paid_at && !l.quote.spread);
+    $("upcoming").innerHTML = (up.length ? up.map(row).join("") : '<p class="sub">Nothing coming up.</p>')
+      + owed.map(l => { const q = l.quote, rest = (+q.setup || 0) - (q.deposit.once ?? q.deposit.cents ?? 0) / 100; return `<div class="row2"><span class="d mono">on delivery</span><span>${escH(nm(l))} · rest of setup${q.monthly ? " + " + cad(+q.monthly) + "/mo starts" : ""}</span><span class="mono in">+${cad2(rest)}</span></div>`; }).join("");
+
+    // Quotes out for approval, with what signing each one changes.
+    if (!deals.length) { $("pending").innerHTML = '<p class="sub">No quotes waiting on a client right now. Sent quotes show up here until the first payment comes in.</p>'; }
+    else {
+      const tSetup = sum(deals, l => +l.quote.setup || 0), tMo = sum(deals, l => +l.quote.monthly || 0);
+      const picked = deals.filter(l => PICK.has(l.id));
+      const yr = l => { const q = l.quote; return q.spread ? (+q.monthly || 0) * 12 : (+q.setup || 0) + (+q.monthly || 0) * 12; };
+      $("pending").innerHTML = `<div class="pnums"><div><span class="sub mono">setup value</span><span class="v">${cad(tSetup)}</span></div><div><span class="sub mono">subscriptions</span><span class="v">${cad(tMo)}/mo</span></div><div><span class="sub mono">first-year value</span><span class="v">${cad(sum(deals, yr))}</span></div></div>`
+        + deals.map(l => { const q = l.quote; return `<label class="deal"><input type="checkbox" data-pick="${l.id}" ${PICK.has(l.id) ? "checked" : ""}><span>${escH(nm(l))}<span class="sub">${q.accepted_at ? "accepted, waiting on payment" : "sent " + fmtD(day0(q.sent_at || q.sent?.date || l.updated_at))}${q.num ? " · " + escH(q.num) : ""}${q.spread ? " · payment plan" : ""}</span></span><span class="mono">${cad(+q.setup || 0)}<span class="sub">+ ${cad(+q.monthly || 0)}/mo</span></span></label>`; }).join("")
+        + (picked.length ? `<div class="impact"><span class="sub mono">if ${picked.length === deals.length && deals.length > 1 ? "they all sign" : picked.map(nm).join(" + ") + " sign" + (picked.length === 1 ? "s" : "")}</span>
+            <span>Next 90 days: <b class="${inn - out >= 0 ? "in" : "out"}">${cad(inn - out)}</b> → <b class="${inn + pin - out >= 0 ? "in" : "out"}">${cad(inn + pin - out)}</b></span>
+            <span>Monthly recurring: <b>${cad(mrr)}</b> → <b class="in">${cad(mrr + pmrr)}/mo</b> · ${cad(mrr + pmrr - bills)}/mo after your monthly bills</span>
+            <span>First year: <b class="in">+${cad(sum(picked, yr))}</b></span>
+            <span class="sub">Assumes the deposit in a week and delivery in about 6 weeks.</span></div>`
+          : '<p class="sub">Tick a quote to see how signing it changes your numbers.</p>');
+    }
+
+    // Expenses list: next charge, or when a one-off was paid.
+    $("expList").innerHTML = EXP.length ? EXP.map(x => {
+      const st = day0((x.start_date || x.next_due) + "T00:00"), nxt = x.every === "once" ? (st > today ? st : null) : occurrences(st, x.every, addMonths(today, 13)).find(d => d > today);
+      const when = nxt ? "next " + fmtD(nxt) : "paid " + fmtD(st);
+      return `<div class="row2"><span class="d mono">${x.every === "once" ? "once" : x.every + "ly"}</span><span>${escH(x.name)} <span class="sub">${when}</span></span><span class="mono out">${cad2(x.amount)}<button class="x" data-del="${x.id}" title="Remove" aria-label="Remove ${escH(x.name)}">×</button></span></div>`;
+    }).join("") : '<p class="sub">Add your bills below, like insurance or your domain.</p>';
   }
+  $("fy").addEventListener("change", renderMoney);
+  $("pending").addEventListener("change", e => { const id = e.target.dataset.pick; if (!id) return; e.target.checked ? PICK.add(id) : PICK.delete(id); renderMoney(); });
   $("expForm").addEventListener("submit", async e => {
     e.preventDefault(); if (!SB) return;
-    const row = { name: $("eName").value.trim(), amount: parseFloat($("eAmt").value.replace(/[^0-9.]/g, "")) || 0, every: $("eEvery").value, next_due: $("eDue").value };
+    const row = { name: $("eName").value.trim(), amount: parseFloat($("eAmt").value.replace(/[^0-9.]/g, "")) || 0, every: $("eEvery").value, next_due: $("eDue").value, start_date: $("eDue").value };
     const { data, error } = await SB.from("expenses").insert(row).select().single();
     if (error) { $("moneyMsg").hidden = false; $("moneyMsg").textContent = "Couldn't add: " + error.message; return; }
     EXP.push(data); EXP.sort((a, b) => a.next_due.localeCompare(b.next_due)); $("expForm").reset(); renderMoney();
