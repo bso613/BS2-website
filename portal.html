@@ -205,6 +205,7 @@
             <div class="kpi"><span class="k mono">going out · next 90 days</span><span class="v out" id="kOut">$0</span></div>
             <div class="kpi"><span class="k mono">net · next 90 days</span><span class="v" id="kNet">$0</span></div>
             <div class="kpi"><span class="k mono">monthly recurring</span><span class="v" id="kMrr">$0</span><span class="sub" id="kMrrSub"></span></div>
+            <div class="kpi"><span class="k mono">claude api credit left</span><span class="v" id="kAi">…</span><span class="sub" id="kAiSub"></span></div>
           </div>
           <div class="mgrid">
             <div class="card2"><h3>Next 90 days</h3><div id="upcoming"></div></div>
@@ -362,6 +363,12 @@
     if (err) $("moneyMsg").textContent = /expenses/.test(err.message) ? "Run the updated setup SQL in Supabase to turn on expenses." : "Couldn't load money: " + err.message;
     LEADS = l.data || []; EXP = e.data || [];
     renderMoney();
+    const [c, u] = await Promise.all([sb.from("ai_credit").select("amount_usd"), sb.from("ai_usage").select("cost_usd, created_at")]);
+    if (c.error || u.error) { $("kAi").textContent = "–"; return; }
+    const bought = c.data.reduce((s, x) => s + +x.amount_usd, 0), spent = u.data.reduce((s, x) => s + +x.cost_usd, 0), left = bought - spent;
+    $("kAi").textContent = "US$" + left.toFixed(2);
+    $("kAi").className = "v " + (left < 1 ? "out" : "");
+    $("kAiSub").textContent = `${u.data.length} transcript${u.data.length === 1 ? "" : "s"} read · about US$${(u.data.length ? spent / u.data.length : 0.05).toFixed(2)} each${left < 1 ? " · top up soon" : ""}`;
   }
   function renderMoney() {
     const today = day0(new Date()), end = addMonths(today, 3);
