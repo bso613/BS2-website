@@ -227,19 +227,31 @@
   </div>
 </div>
 
+<script src="services.js"></script>
 <script>
 const CATALOG = [
-  { on: true,  name: "Domain name", plan: ".ca, 1 year (estimate)", cost: 20, cur: "CAD", per: "year", hrs: 3 },
-  { on: true,  name: "Vercel", plan: "Pro (website hosting)", cost: 20, cur: "USD", per: "month", hrs: 3 },
-  { on: false, name: "Supabase", plan: "Pro (database + logins)", cost: 25, cur: "USD", per: "month", hrs: 3 },
-  { on: false, name: "Supabase", plan: "Free (small projects)", cost: 0, cur: "USD", per: "month", hrs: 3 },
-  { on: false, name: "Wave", plan: "Starter (invoicing)", cost: 0, cur: "CAD", per: "month", hrs: 3 },
-  { on: false, name: "Wave", plan: "Pro", cost: 25, cur: "CAD", per: "month", hrs: 3 },
-  { on: true,  name: "Stripe", plan: "Payments, 2.9% + $0.30 per charge", cost: 0, cur: "CAD", per: "month", hrs: 3 },
-  { on: false, name: "Cloudflare", plan: "Free (DNS + security)", cost: 0, cur: "USD", per: "month", hrs: 3 },
-  { on: false, name: "Calendly", plan: "Standard (bookings)", cost: 12, cur: "USD", per: "month", hrs: 3 },
-  { on: false, name: "Tally", plan: "Free (forms)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "domain",     on: true,  name: "Domain name", plan: ".ca, 1 year (estimate)", cost: 20, cur: "CAD", per: "year", hrs: 3 },
+  { id: "cloudflare", on: true,  name: "Cloudflare", plan: "Free (DNS + security)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "github",     on: false, name: "GitHub", plan: "Free (code + simple hosting)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "vercel",     on: true,  name: "Vercel", plan: "Pro (website hosting)", cost: 20, cur: "USD", per: "month", hrs: 3 },
+  { id: "supabase",   on: false, name: "Supabase", plan: "Pro (database + logins)", cost: 25, cur: "USD", per: "month", hrs: 3 },
+  { id: "supabase",   on: false, name: "Supabase", plan: "Free (small projects)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "stripe",     on: true,  name: "Stripe", plan: "Payments, 2.9% + $0.30 per charge", cost: 0, cur: "CAD", per: "month", hrs: 3 },
+  { id: "improvmx",   on: false, name: "ImprovMX", plan: "Free (business email forwarding)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "resend",     on: false, name: "Resend", plan: "Free (up to 3,000 emails/mo)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "calendly",   on: false, name: "Calendly", plan: "Standard (bookings)", cost: 12, cur: "USD", per: "month", hrs: 3 },
+  { id: "tally",      on: false, name: "Tally", plan: "Free (forms)", cost: 0, cur: "USD", per: "month", hrs: 3 },
+  { id: "anthropic",  on: false, name: "Claude API (Anthropic)", plan: "Pay as you go (AI features, estimate)", cost: 5, cur: "USD", per: "month", hrs: 3 },
+  { id: "wave",       on: false, name: "Wave", plan: "Starter (invoicing)", cost: 0, cur: "CAD", per: "month", hrs: 3 },
 ];
+const SVC = window.BS2_SERVICES || {};
+const svcOf = t => SVC[t.id || (window.BS2_SERVICE_ID ? window.BS2_SERVICE_ID(t.name) : "")] || null;
+// Saved quotes keep their own tool list; add any catalog tools they don't have yet (unticked).
+function withCatalog(tools) {
+  const have = new Set(tools.map(t => (t.id || (window.BS2_SERVICE_ID ? window.BS2_SERVICE_ID(t.name) : t.name)) + "|" + t.plan));
+  const seen = new Set(tools.map(t => t.id || (window.BS2_SERVICE_ID ? window.BS2_SERVICE_ID(t.name) : "")));
+  return tools.concat(CATALOG.filter(c => !seen.has(c.id) && !have.has(c.id + "|" + c.plan)).map(c => ({ ...c, on: false })));
+}
 const WORK = [
   { name: "Website design and build", hrs: 12 },
   { name: "Quote-to-invoice workflow", hrs: 6 },
@@ -278,7 +290,7 @@ function renderTools() {
     <tr class="${t.on ? "" : "off"}">
       <td><input type="checkbox" id="t-on-${i}" data-i="${i}" data-k="on" ${t.on ? "checked" : ""} aria-label="Include ${esc(t.name)}"></td>
       <td class="name"><input class="txt" type="text" id="t-name-${i}" data-i="${i}" data-k="name" value="${esc(t.name)}" aria-label="Tool name">
-        <input class="txt" type="text" id="t-plan-${i}" data-i="${i}" data-k="plan" value="${esc(t.plan)}" aria-label="Plan" style="margin-top:4px;font-size:12px;color:var(--faint)"></td>
+        <input class="txt" type="text" id="t-plan-${i}" data-i="${i}" data-k="plan" value="${esc(t.plan)}" aria-label="Plan" style="margin-top:4px;font-size:12px;color:var(--faint)">${svcOf(t) ? `<span style="display:block;margin-top:4px;font-size:11px;color:var(--faint);line-height:1.4;max-width:340px">${esc(svcOf(t).purpose)}</span>` : ""}</td>
       <td><input class="num" type="number" min="0" step="0.01" id="t-cost-${i}" data-i="${i}" data-k="cost" value="${t.cost}" aria-label="Cost"></td>
       <td><select id="t-cur-${i}" data-i="${i}" data-k="cur" aria-label="Currency"><option ${t.cur==="CAD"?"selected":""}>CAD</option><option ${t.cur==="USD"?"selected":""}>USD</option></select></td>
       <td><select id="t-per-${i}" data-i="${i}" data-k="per" aria-label="Billing period"><option value="month" ${t.per==="month"?"selected":""}>month</option><option value="year" ${t.per==="year"?"selected":""}>year</option></select></td>
@@ -356,7 +368,7 @@ function render() {
   let t = c.on.length ? c.on.map(x => {
     const raw = `${money(+x.cost || 0, x.cur)}/${x.per === "month" ? "mo" : "yr"}`;
     const cad = x.cur === "USD" && +x.cost ? ` <span style="color:var(--faint)">≈ ${money(c.toolCad(x))}</span>` : "";
-    return L(`${esc(x.name)} <span style="color:var(--faint)">· ${esc(x.plan)}</span>`, raw + cad);
+    return L(`${esc(x.name)} <span style="color:var(--faint)">· ${esc(x.plan)}</span>`, raw + cad) + (svcOf(x) ? `<p class="purp" style="margin:-4px 0 4px;font-size:12px;color:var(--faint);line-height:1.45">${esc(svcOf(x).purpose)}</p>` : "");
   }).join("") : `<p class="empty">No tools ticked.</p>`;
   if (c.on.length) t += L("Tools per month, CAD estimate", money(c.toolsMonthly), "total");
   $("qTools").innerHTML = t;
@@ -397,7 +409,7 @@ $("reset").onclick = () => {
 };
 
 const saved = load();
-state = saved ? { tools: saved.tools, work: saved.work || [] } : fresh();
+state = saved ? { tools: withCatalog(saved.tools), work: saved.work || [] } : fresh();
 if (saved && saved.fields) fieldIds.forEach(id => { if (saved.fields[id] !== undefined) $(id).value = saved.fields[id]; });
 if (saved && saved.fields && saved.fields.mplan === undefined) { $("mplan").value = "plus"; $("maint").value = 200; }
 renderTools(); renderWork(); render();
@@ -413,7 +425,7 @@ function leadLabel(l) { return (l.business || l.name || l.email) + (l.business &
 function fillFromLead(l, fresh) {
   const q = l.quote || {};
   if (!fresh && q.builder && q.builder.tools) {
-    state = { tools: q.builder.tools, work: q.builder.work || [] };
+    state = { tools: withCatalog(q.builder.tools), work: q.builder.work || [] };
     fieldIds.forEach(id => { if (q.builder.fields && q.builder.fields[id] !== undefined) $(id).value = q.builder.fields[id]; });
   } else {
     $("project").value = (l.intake || {})["What can I help with?"] || "";
@@ -450,6 +462,8 @@ function snapshot() {
     date: new Date().toISOString().slice(0, 10), valid_until: until.toLocaleDateString("en-CA"),
     valid_until_label: until.toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }),
     big: [...document.querySelectorAll(".big > div")].filter(d => !d.hidden).map(d => ({ label: txt(d.querySelector("small")), value: txt(d.querySelector("strong")) })),
+    guide: state.tools.filter(t => t.on).map(t => { const v = svcOf(t) || {};
+      return { id: t.id || null, name: t.name, plan: t.plan, cost: (+t.cost ? (t.cur === "USD" ? "US$" : "$") + (+t.cost).toFixed(2).replace(/\.00$/, "") + (t.per === "month" ? "/mo" : "/yr") : ""), purpose: v.purpose || "", url: v.url || "", signup: v.signup || "", tip: v.tip || "" }; }),
     sections: [...document.querySelectorAll(".quote .qsec")].map(sec => ({
       title: txt(sec.querySelector("h4")), note: sec.querySelector(".sub") ? txt(sec.querySelector(".sub")) : "",
       lines: [...sec.querySelectorAll(".line")].map(l => { const sp = l.children; return { label: txt(sp[0]), value: sp.length > 1 ? txt(sp[sp.length - 1]) : "", total: l.classList.contains("total") }; }),
@@ -475,7 +489,7 @@ function openCompose() {
   const q = LEAD.quote || {};
   $("cTo").textContent = (LEAD.name ? LEAD.name + " · " : "") + LEAD.email;
   $("cSubj").value = (q.sent_at ? "Updated quote" : "Your quote") + " from BS2 (" + $("qnum").value + ")";
-  $("cMsg").value = `Hi ${first},\n\nThanks for taking the time to talk. Here's ${q.sent_at ? "the updated" : "your"} quote${$("project").value ? " for " + $("project").value.toLowerCase() : ""}. It lays out the setup, the monthly plan and the tools you'd own, with their costs.\n\nIf it looks good, you can accept it right from the page. The payment terms are spelled out there, and you can pay the deposit in the same step. Any questions, just reply here.\n\nBen\nBS2`;
+  $("cMsg").value = `Hi ${first},\n\nThanks for taking the time to talk. Here's ${q.sent_at ? "the updated" : "your"} quote${$("project").value ? " for " + $("project").value.toLowerCase() : ""}. It lays out the setup, the monthly plan and the tools you'd own, with their costs. At the bottom there's a start-up guide that explains what each tool does and links to where you sign up.\n\nIf it looks good, you can accept it right from the page. The payment terms are spelled out there, and you can pay the deposit in the same step. Any questions, just reply here.\n\nBen\nBS2`;
   $("compose").hidden = false; $("cMsg").focus();
 }
 async function sendQuote() {

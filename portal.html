@@ -207,6 +207,7 @@
         <div class="tile"><p class="tag mono">agreements</p><p>Read and sign your service agreement.</p><div class="slot" id="tAgree"><p class="empty mono">nothing yet</p></div></div>
         <div class="tile"><p class="tag mono">invoices</p><p>See what's due and your past invoices.</p><div class="slot" id="tInv"><p class="empty mono">nothing yet</p></div></div>
         <div class="tile"><p class="tag mono">payments</p><p>Pay securely by card or bank debit.</p><div class="slot" id="tPay"><p class="empty mono">nothing yet</p></div></div>
+        <div class="tile"><p class="tag mono">start-up guide</p><p>The accounts your setup uses, what each one does, and where to sign up.</p><div class="slot" id="tGuide"><p class="empty mono">comes with your quote</p></div></div>
       </div>
       <div id="adminBox" hidden>
         <div class="atabs" role="tablist">
@@ -332,6 +333,7 @@
         <p class="line ${q.accepted_at ? "ok" : ""}">${q.accepted_at ? "✓ accepted " + d(q.accepted_at) : "sent " + d(q.sent_at) + ", waiting on you"}</p>
         ${q.token ? `<a class="go mono" href="quote.html?t=${encodeURIComponent(q.token)}">${q.accepted_at ? "view quote" : "review and accept"} &rarr;</a>` : ""}`;
     }
+    if (q && q.token) $("tGuide").innerHTML = `<a class="go mono" href="quote.html?t=${encodeURIComponent(q.token)}#guide">open your start-up guide &rarr;</a>`;
     const a = r.agreement || {};
     if (a.signed_at) $("tAgree").innerHTML = `<p class="line ok">✓ signed ${d(a.signed_at)}</p>`;
     else if (q && q.accepted_at) $("tAgree").innerHTML = `<p class="line">Ben is sending your service agreement next.</p>`;

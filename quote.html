@@ -55,6 +55,15 @@
   footer { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
   footer a { color: inherit; }
   @media (max-width: 600px) { .wrap { padding: 0 16px; } main { padding: 32px 0 60px; } }
+  .guide .steps { margin: 6px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .guide .steps li { padding-left: 4px; line-height: 1.5; }
+  .guide .steps li::marker { color: var(--accent); font-family: var(--mono, monospace); }
+  .guide .steps b { font-weight: 600; }
+  .guide .steps span { display: block; color: var(--muted, #aab3c0); font-size: 14px; }
+  .guide .steps .cost { display: inline; font-size: 12px; color: var(--faint, #7d8796); margin-left: 6px; }
+  .guide .steps .tip { color: var(--faint, #7d8796); font-size: 13px; }
+  .guide .go { display: inline-block; margin-top: 4px; color: var(--accent); text-decoration: none; font-size: 14px; }
+  .guide .go:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -65,6 +74,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+<script src="services.js"></script>
 <script>
 const SUPABASE_URL = "https://wwznpjdpbewyhswotuht.supabase.co";
 const SUPABASE_KEY = "sb_publishable_wAGaa2nu8tAha93pdvookQ_k4wsFIkx"; // public by design
@@ -75,6 +85,26 @@ const t = new URLSearchParams(location.search).get("t") || "";
 const main = $("main");
 const fail = text => { main.innerHTML = `<p class="empty">${text}</p>`; };
 const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+
+// Start-up guide: the accounts this quote recommends, what each one is for, and where to sign up.
+function guideHtml(q) {
+  const S = window.BS2_SERVICES || {}, idOf = window.BS2_SERVICE_ID || (() => null);
+  let items = q.guide;
+  if (!items) { // quotes sent before the guide existed: read the tools section
+    const sec = (q.sections || []).find(x => /tool/i.test(x.title || ""));
+    items = sec ? sec.lines.filter(l => !l.total).map(l => { const [name, plan] = l.label.split(" · "); const v = S[idOf(name)] || {}; return { name, plan: plan || "", cost: /^(US)?\$0\.00/.test(l.value) ? "" : l.value.split(" ≈")[0], purpose: v.purpose || "", url: v.url || "", signup: v.signup || "", tip: v.tip || "" }; }) : [];
+  }
+  if (!items.length) return "";
+  return `<section class="sec guide" id="guide"><h2>Your start-up guide</h2>
+    <p class="note">These are the accounts your setup uses. Each one is in your name, so you own it and pay the provider directly. You can open them now or wait for your kickoff call with Ben.</p>
+    <ol class="steps">
+      <li><b>Use your business email for every account</b><span>Keep the logins in a password manager. Once you're in, invite ben@bs2.ca as an admin or team member. Never send Ben your password.</span></li>
+      ${items.map(i => `<li><b>${esc(i.name)}</b> <span class="cost mono">${esc([i.plan, i.cost].filter(Boolean).join(" · "))}</span>
+        ${i.purpose ? `<span>${esc(i.purpose)}</span>` : ""}
+        ${i.tip ? `<span class="tip">Tip: ${esc(i.tip)}</span>` : ""}
+        ${i.url ? `<a class="go mono" href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.signup || "Sign up")} →</a>` : ""}</li>`).join("")}
+    </ol></section>`;
+}
 
 (async () => {
   if (!window.supabase) return fail("This page couldn't load. Please refresh, or reply to the quote email.");
@@ -92,7 +122,9 @@ const longDate = d => new Date(d).toLocaleDateString("en-CA", { year: "numeric",
     <div class="big">${(q.big || []).map(b => `<div><small>${esc(b.label)}</small><strong>${esc(b.value)}</strong></div>`).join("")}</div>
     ${(q.sections || []).map(s => `<section class="sec"><h2>${esc(s.title)}</h2>${s.note ? `<p class="note">${esc(s.note)}</p>` : ""}
       ${(s.lines || []).map(l => `<div class="line ${l.total ? "total" : ""}"><span>${esc(l.label)}</span><span>${esc(l.value)}</span></div>`).join("")}</section>`).join("")}
+    ${guideHtml(q)}
     <section class="accept" id="acceptBox"></section>`;
+  if (location.hash === "#guide" && $("guide")) $("guide").scrollIntoView();
   const box = $("acceptBox");
   const money = n => "$" + (+n || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const pay = async (body) => {
