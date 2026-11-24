@@ -61,7 +61,8 @@
   .card .img { height: 200px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; color: var(--faint); font-size: 13px; }
   .card .body { padding: 22px; display: flex; flex-direction: column; gap: 8px; }
   img.img { width: 100%; object-fit: cover; display: block; }
-  .card img[src*="plamocase"] { object-position: left top; }
+  .card img[src*="plamocase"], .card img[src*="nvs"] { object-position: left top; }
+  .card .soon { color: var(--accent); font-size: 12px; }
   .card h3 { font-size: 20px; }
   .card p { font-size: 13px; }
 
@@ -78,6 +79,14 @@
   #book h2 { font-size: 48px; letter-spacing: -1.5px; }
   #book p { font-size: 18px; color: var(--muted); margin-top: 12px; }
 
+  .stack { padding-bottom: 120px; display: flex; flex-direction: column; gap: 32px; }
+  .stack-rows { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .stack-row { display: grid; grid-template-columns: 140px 1fr; gap: 16px; align-items: center; padding: 18px 24px; background: var(--surface); }
+  .stack-row + .stack-row { border-top: 1px solid var(--line); }
+  .stack-row .label { color: var(--accent); font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+  .chips li { font-size: 13px; color: var(--muted); border: 1px solid var(--line); background: var(--surface-2); border-radius: 6px; padding: 6px 10px; }
+
   footer { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding: 24px 0 40px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
 
   @media (max-width: 600px) {
@@ -86,6 +95,7 @@
     .calendly-inline-widget { height: 1000px; }
     #book h2 { font-size: 36px; }
     .about p { font-size: 21px; }
+    .stack-row { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
   }
 </style>
 </head>
@@ -97,6 +107,7 @@
     <div class="links mono">
       <a href="#services">/services</a>
       <a href="#work">/work</a>
+      <a href="#stack">/stack</a>
       <a href="portal.html" class="btn btn-outline">client_login()</a>
     </div>
   </nav>
@@ -136,18 +147,24 @@
         <img class="img" src="img/plamocase.jpg" alt="PlamoCase homepage: a community site for model kit builders">
         <div class="body"><h3>PlamoCase</h3><p class="mono">next.js · supabase · cloudflare · email&nbsp;forwarding</p></div>
       </a>
-      <a class="card" href="https://github.com/serenaremlang/Ottawa-Construction" target="_blank" rel="noopener">
-        <img class="img" src="https://images.unsplash.com/photo-1578973615934-8d9cdb0792b4?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Canadian flag in front of the Peace Tower on Parliament Hill, Ottawa" loading="lazy">
-        <div class="body"><h3>Ottawa Construction Map</h3><p class="mono">mongodb · leaflet · d3</p></div>
-      </a>
-      <a class="card" href="https://github.com/bso613/WineSnobs" target="_blank" rel="noopener">
-        <img class="img" src="https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Wine glass overlooking a vineyard" loading="lazy">
-        <div class="body"><h3>WineSnobs</h3><p class="mono">python · pandas · apis</p></div>
-      </a>
-      <a class="card" href="https://github.com/serenaremlang/Formula1_Fun" target="_blank" rel="noopener">
-        <img class="img" src="https://images.unsplash.com/photo-1614949194403-9602bdc14a3a?auto=format&amp;fit=crop&amp;w=800&amp;q=70" alt="Race car on a track with painted curbs" loading="lazy">
-        <div class="body"><h3>Formula 1 Fun</h3><p class="mono">postgresql · flask · scraping</p></div>
-      </a>
+      <div class="card">
+        <img class="img" src="img/nvs.jpg" alt="Nation Valley Services homepage: Elevate Every Entrance, commercial entrance matting">
+        <div class="body"><h3>Nation Valley Services</h3><p class="mono">javascript · cloudflare&nbsp;workers · github</p><p class="mono soon">launching soon</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stack" class="stack">
+    <h2>Tools I work with</h2>
+    <div class="stack-rows">
+      <div class="stack-row"><p class="label mono">build</p><ul class="chips mono"><li>javascript</li><li>next.js</li><li>python</li><li>flask</li><li>sql</li><li>apps script</li><li>github</li></ul></div>
+      <div class="stack-row"><p class="label mono">hosting</p><ul class="chips mono"><li>cloudflare workers</li><li>cloudflare r2</li><li>vercel</li><li>github pages</li></ul></div>
+      <div class="stack-row"><p class="label mono">domains</p><ul class="chips mono"><li>cloudflare dns</li><li>dns redirects</li><li>rebel</li></ul></div>
+      <div class="stack-row"><p class="label mono">data</p><ul class="chips mono"><li>supabase</li><li>postgresql</li><li>mongodb</li><li>google sheets</li><li>power bi</li><li>tableau</li><li>sharepoint</li></ul></div>
+      <div class="stack-row"><p class="label mono">apis</p><ul class="chips mono"><li>stripe</li><li>questrade</li></ul></div>
+      <div class="stack-row"><p class="label mono">email</p><ul class="chips mono"><li>google workspace</li><li>google cloud</li><li>resend</li><li>improvmx</li></ul></div>
+      <div class="stack-row"><p class="label mono">ai</p><ul class="chips mono"><li>claude</li><li>copilot</li><li>power automate</li><li>power apps</li></ul></div>
+      <div class="stack-row"><p class="label mono">side builds</p><ul class="chips mono"><li>workout tracker web app</li><li>questrade investment sheet</li></ul></div>
     </div>
   </section>
 
