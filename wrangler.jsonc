@@ -1,0 +1,6 @@
+// Cloudflare Workers static site settings for bs2.ca (no build step).
+{
+  "name": "bs2-website",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./", "html_handling": "auto-trailing-slash" }
+}
