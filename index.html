@@ -71,7 +71,7 @@
   .about p { flex: 1 1 400px; font-size: 26px; line-height: 1.4; }
 
   #book { border: 1px solid var(--accent); border-radius: 16px; padding: 72px 48px; display: flex; flex-direction: column; gap: 24px; margin-bottom: 64px; scroll-margin-top: 24px; }
-  .calendly-inline-widget { min-width: 280px; height: 700px; border-radius: 12px; overflow: hidden; }
+  .cal-inline { min-width: 280px; min-height: 640px; width: 100%; border-radius: 12px; overflow: auto; }
   .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 18px; }
   .steps .mono { color: var(--accent); margin-right: 10px; }
   .steps a { color: var(--accent); }
@@ -92,7 +92,6 @@
   @media (max-width: 600px) {
     header { padding: 80px 0; }
     #book { padding: 40px 16px; }
-    .calendly-inline-widget { height: 1000px; }
     #book h2 { font-size: 36px; }
     .about p { font-size: 21px; }
     .stack-row { grid-template-columns: 1fr; gap: 10px; padding: 16px; }
@@ -182,8 +181,14 @@
       <li><span class="mono">01</span> Fill out the <a href="intake.html">3-minute intake form</a> so I can come prepared. It takes you to the calendar after.</li>
       <li><span class="mono">02</span> Pick a time. Already filled it out? Pick one below.</li>
     </ol>
-    <div class="calendly-inline-widget" data-url="https://calendly.com/ben-a-smith-613/30min?hide_gdpr_banner=1&amp;background_color=11151c&amp;text_color=e8ecf2&amp;primary_color=7ee0c3"></div>
-    <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+    <div class="cal-inline" id="cal-inline"></div>
+    <script>
+    (function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(api, arguments); }; const namespace = ar[1]; api.q = api.q || []; if (typeof namespace === "string") { cal.ns[namespace] = cal.ns[namespace] || api; p(cal.ns[namespace], ar); p(cal, ["initNamespace", namespace]); } else p(cal, ar); return; } p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", "intro", { origin: "https://app.cal.com" });
+    Cal.ns.intro("inline", { elementOrSelector: "#cal-inline", calLink: "ben-smith-bs2/30min", config: { layout: "month_view", theme: "dark" } });
+    Cal.ns.intro("ui", { theme: "dark", hideEventTypeDetails: false, layout: "month_view", cssVarsPerTheme: { dark: { "cal-brand": "#7ee0c3", "cal-bg": "#11151c", "cal-bg-emphasis": "#1a2029", "cal-text": "#e8ecf2" } } });
+    </script>
+    <noscript><p class="alt"><a href="https://cal.com/ben-smith-bs2/30min">Book a 30-minute call on Cal.com</a></p></noscript>
     <p class="alt">Prefer email? <a href="mailto:ben.a.smith.613@gmail.com?subject=Book%20a%20call%20with%20BS2">ben.a.smith.613@gmail.com</a></p>
   </section>
 
