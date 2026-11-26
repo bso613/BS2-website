@@ -1,6 +1,8 @@
-// Cloudflare Workers static site settings for bs2.ca (no build step).
+// Cloudflare Workers settings for bs2.ca (no build step).
+// Static pages are served from ./; worker/email.js also handles events@ and bills@ email.
 {
   "name": "bs2-website",
+  "main": "worker/email.js",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./", "html_handling": "auto-trailing-slash" }
+  "assets": { "directory": "./", "binding": "ASSETS", "html_handling": "auto-trailing-slash" }
 }
