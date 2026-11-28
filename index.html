@@ -83,6 +83,18 @@
   .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; font-size: 18px; }
   .steps .mono { color: var(--accent); margin-right: 10px; }
   .steps a { color: var(--accent); }
+  .intake-card { display: flex; align-items: center; justify-content: space-between; gap: 24px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 22px 26px; text-decoration: none; color: var(--text); transition: border-color .15s, transform .15s; }
+  .intake-card:hover { border-color: var(--accent); color: var(--text); transform: translateY(-1px); }
+  .ic-text { display: flex; flex-direction: column; gap: 6px; }
+  .ic-text strong { font-size: 22px; }
+  .ic-step { color: var(--accent); font-size: 13px; letter-spacing: .04em; }
+  .ic-chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; margin-left: 6px; color: var(--muted); }
+  .ic-sub { color: var(--muted); font-size: 15px; }
+  .ic-go { background: var(--accent); color: var(--on-accent); font-weight: 700; font-size: 18px; padding: 16px 24px; border-radius: 10px; white-space: nowrap; }
+  .intake-card:hover .ic-go { filter: brightness(1.1); }
+  #book .ic-next { color: var(--accent); font-size: 14px; margin: 8px 0 -8px; }
+  #book .ic-next span { color: var(--faint); }
+  @media (max-width: 640px) { .intake-card { flex-direction: column; align-items: stretch; } .ic-go { text-align: center; } }
   #book .alt { font-size: 15px; margin-top: 0; }
   #book h2 { font-size: 48px; letter-spacing: -1.5px; }
   #book p { font-size: 18px; color: var(--muted); margin-top: 12px; }
@@ -185,10 +197,15 @@
       <h2>Let's talk.</h2>
       <p>A free 30-minute call. English, French or Spanish.</p>
     </div>
-    <ol class="steps">
-      <li><span class="mono">01</span> Fill out the <a href="intake.html">3-minute intake form</a> so I can come prepared. It takes you to the calendar after.</li>
-      <li><span class="mono">02</span> Pick a time. Already filled it out? Pick one below.</li>
-    </ol>
+    <a class="intake-card" href="intake.html">
+      <span class="ic-text">
+        <span class="mono ic-step">STEP 01 <span class="ic-chip">3 min</span></span>
+        <strong>Start here so I come prepared.</strong>
+        <span class="ic-sub">Then you'll pick a time. Your answers go only to Ben.</span>
+      </span>
+      <span class="ic-go">Hand me your BS →</span>
+    </a>
+    <p class="mono ic-next">step 02 · pick a time <span>(already filled it out? pick one below)</span></p>
     <div class="cal-inline" id="cal-inline"></div>
     <script>
     (function (C, A, L) { let p = function (a, ar) { a.q.push(ar); }; let d = C.document; C.Cal = C.Cal || function () { let cal = C.Cal; let ar = arguments; if (!cal.loaded) { cal.ns = {}; cal.q = cal.q || []; d.head.appendChild(d.createElement("script")).src = A; cal.loaded = true; } if (ar[0] === L) { const api = function () { p(api, arguments); }; const namespace = ar[1]; api.q = api.q || []; if (typeof namespace === "string") { cal.ns[namespace] = cal.ns[namespace] || api; p(cal.ns[namespace], ar); p(cal, ["initNamespace", namespace]); } else p(cal, ar); return; } p(cal, ar); }; })(window, "https://app.cal.com/embed/embed.js", "init");
