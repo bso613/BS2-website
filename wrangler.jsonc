@@ -1,5 +1,6 @@
 // Cloudflare Workers settings for bs2.ca (no build step).
 // Static pages are served from ./; worker/email.js also handles events@ and bills@ email.
+// Cloudflare Workers Builds deploys every push to main automatically.
 {
   "name": "bs2-website",
   "main": "worker/email.js",
