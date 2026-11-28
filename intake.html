@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
 <title>Intake form · BS²</title>
 <meta name="description" content="Three minutes of questions before your free call with BS2.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -145,7 +146,7 @@ $("intake").addEventListener("submit", async e => {
     if (QS[i].req && !v) return fail("Please answer: " + QS[i].k, "f" + i);
     if (v) intake[QS[i].k] = v;
   }
-  if (!window.supabase) return fail("The form couldn't connect. Please refresh, or email ben.a.smith.613@gmail.com.");
+  if (!window.supabase) return fail("The form couldn't connect. Please refresh, or email ben@bs2.ca.");
   $("send").disabled = true; $("send").textContent = "Sending…";
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
   const { error } = await sb.rpc("submit_intake", { p: { name, email, business: $("business").value.trim(), website: $("website").value, intake } });

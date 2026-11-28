@@ -1,0 +1,7 @@
+User-agent: *
+Disallow: /pipeline
+Disallow: /quote-builder
+Disallow: /quote
+Allow: /
+
+Sitemap: https://www.bs2.ca/sitemap.xml
